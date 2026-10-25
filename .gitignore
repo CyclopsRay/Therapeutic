@@ -1,0 +1,36 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+*.log
+*.out
+*.part
+
+# Bulk data live under /nfs-stor/yuqi.lei/Therapeutic, never in this tree.
+bulk-data
+data/raw/
+data/derived/
+
+# Local agent instructions and project memory; never publish to GitHub.
+/CLAUDE.md
+/AGENTS.md
+/ONGOING.md
+/KNOWLEDGE.md
+/PLAN.md
+/DISCUSSION.md
+/START.md
+/.claude/
+/.codex/
+/.agents/
+logs/
+
+# Third-party reproductions (code clones + local patches); data live under /nfs-stor. Not published.
+repro/
+
+# Third-party clones; source and pinned commit in external/SOURCES.md.
+external/*/
+
+# Published papers are re-downloadable from the DOIs in papers/README.md; keep our own talk.
+papers/*.pdf
+!papers/Rhaister_6min_*.pdf

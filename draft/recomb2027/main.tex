@@ -1,0 +1,48 @@
+% RECOMB 2027 submission draft -- skeleton (2026-10-11).
+% Abstract due 2026-10-28, full paper 2026-11-04 23:59 AoE; <= 10 pages + unlimited appendix (PLAN.md Phase 6).
+% Format assumed: Springer LNCS (llncs.cls ships with TeX Live / Overleaf). Verify against the RECOMB 2027 CFP.
+\documentclass[runningheads]{llncs}
+
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{cleveref}
+
+% ---- drafting macros (remove before submission) ----
+\newcommand{\pending}[1]{\textcolor{orange}{[PENDING: #1]}}   % result not yet computed
+\newcommand{\note}[1]{\textcolor{blue}{[#1]}}                   % outline / what this paragraph must do
+\newcommand{\citeneeded}{\textcolor{red}{[cite?]}}
+\newcommand{\real}{\textsc{real}}
+\newcommand{\rewired}{\textsc{rewired}}
+
+\begin{document}
+
+\title{Degree, not wiring: what interaction networks contribute\\ to perturbation-response prediction}
+% Alternative titles: "Interaction-network priors in perturbation models encode node degree";
+% "A control ladder for network priors in perturbation-response models".
+\titlerunning{Degree, not wiring}
+
+\author{Yuqi Lei\inst{1} \and Hanzhe Liang\inst{1} \and Jun Wen\inst{1}}
+\authorrunning{Y. Lei et al.}
+\institute{\note{affiliations to be confirmed}}
+
+\maketitle
+
+\input{sections/00_abstract}
+\input{sections/01_introduction}
+\input{sections/02_framework}
+\input{sections/03_results}
+\input{sections/04_discussion}
+
+\bibliographystyle{splncs04}
+\bibliography{refs}
+
+\clearpage
+\appendix
+\input{sections/05_appendix}
+
+\end{document}

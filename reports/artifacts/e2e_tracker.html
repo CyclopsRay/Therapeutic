@@ -1,0 +1,366 @@
+<title>Integrated Model Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a lab run-sheet. Status strip on top, results (dot plot + forest plot) beside their controls,
+   then the pipeline as a wiring diagram, then the decision log. One column on phones. */
+:root {
+  --bg: #f6f7f8; --panel: #ffffff; --ink: #14171a; --ink-2: #4d555d; --ink-3: #7b838b;
+  --rule: #dde1e5; --grid: #eceff2; --accent: #1f5f8b; --accent-soft: #e3eef6;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --base: #8a9197;
+  --good: #1d7a3e; --good-bg: #e2f2e7; --warn: #8a5a00; --warn-bg: #fbefd2;
+  --bad: #b4282e; --bad-bg: #f9e1e1; --idle: #56606a; --idle-bg: #eceff2;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121518; --panel: #1a1e22; --ink: #eef1f3; --ink-2: #b4bcc3; --ink-3: #848d95;
+  --rule: #2c3238; --grid: #252a2f; --accent: #7db5dc; --accent-soft: #1d2d3a;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --base: #8e979f;
+  --good: #6fcf8f; --good-bg: #183324; --warn: #e7b450; --warn-bg: #352a12;
+  --bad: #f08a8d; --bad-bg: #3a1c1e; --idle: #aab3bb; --idle-bg: #252a2f; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121518; --panel: #1a1e22; --ink: #eef1f3; --ink-2: #b4bcc3; --ink-3: #848d95;
+  --rule: #2c3238; --grid: #252a2f; --accent: #7db5dc; --accent-soft: #1d2d3a;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --base: #8e979f;
+  --good: #6fcf8f; --good-bg: #183324; --warn: #e7b450; --warn-bg: #352a12;
+  --bad: #f08a8d; --bad-bg: #3a1c1e; --idle: #aab3bb; --idle-bg: #252a2f; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: 0.005em; }
+h1 { font-size: 1.9rem; font-weight: 600; line-height: 1.15; }
+h2 { font-size: 1.25rem; font-weight: 600; }
+h3 { font-size: 1rem; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+.eyebrow { font: 500 0.72rem/1 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.muted { color: var(--ink-2); }
+.mono, .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+header { display: grid; gap: 10px; border-bottom: 1px solid var(--rule); padding-bottom: 18px; }
+header .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; font: 0.8rem var(--f-mono); color: var(--ink-2); }
+section { display: grid; gap: 14px; min-width: 0; }
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 16px; min-width: 0; }
+.sec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+
+/* runs */
+.runs { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.run { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 6px; background: var(--panel); min-width: 0; }
+.run .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.run .id { font: 500 0.82rem var(--f-mono); overflow-wrap: anywhere; }
+.run .note { font-size: 0.84rem; color: var(--ink-2); }
+.run .facts { font: 0.75rem var(--f-mono); color: var(--ink-3); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.pill { font: 500 0.7rem/1 var(--f-mono); letter-spacing: 0.05em; text-transform: uppercase; padding: 4px 7px; border-radius: 3px; white-space: nowrap; }
+.pill::before { content: "● "; }
+.st-done { color: var(--good); background: var(--good-bg); }
+.st-running { color: var(--accent); background: var(--accent-soft); }
+.st-queued { color: var(--idle); background: var(--idle-bg); }
+.st-failed { color: var(--bad); background: var(--bad-bg); }
+.st-smoke { color: var(--warn); background: var(--warn-bg); }
+
+/* controls */
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: end; }
+.ctl { display: grid; gap: 4px; min-width: 0; }
+.ctl label { font: 500 0.7rem var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+select, .seg button { font: 0.85rem var(--f-body); color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; padding: 6px 9px; }
+select { max-width: 100%; }
+.seg { display: inline-flex; }
+.seg button { cursor: pointer; border-radius: 0; margin-left: -1px; }
+.seg button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
+.seg button:last-child { border-radius: 0 4px 4px 0; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); position: relative; z-index: 1; font-weight: 600; }
+button:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.charts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 16px; }
+@media (max-width: 860px) { .charts { grid-template-columns: minmax(0, 1fr); } }
+.chart-box { display: grid; gap: 8px; min-width: 0; }
+.chart-box .cap { font-size: 0.82rem; color: var(--ink-2); }
+.svgwrap { overflow-x: auto; position: relative; }
+svg text { font-family: var(--f-mono); font-size: 11px; fill: var(--ink-2); }
+svg .lbl { font-family: var(--f-body); font-size: 12px; fill: var(--ink); }
+.empty { padding: 26px 16px; text-align: center; color: var(--ink-2); border: 1px dashed var(--rule); border-radius: 6px; font-size: 0.9rem; }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font: 0.75rem/1.4 var(--f-mono); padding: 6px 8px; border-radius: 4px; white-space: nowrap; transform: translate(-50%, calc(-100% - 10px)); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.8rem; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.legend i.ref { border-radius: 0; width: 14px; height: 0; border-top: 2px dashed var(--base); }
+
+details summary { cursor: pointer; font-size: 0.82rem; color: var(--accent); }
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.84rem; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font: 500 0.7rem var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+td.num { text-align: right; }
+
+/* pipeline */
+.pipe-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 860px) { .pipe-grid { grid-template-columns: minmax(0, 1fr); } }
+.diagram svg { width: 100%; height: auto; min-width: 560px; }
+.diagram rect.box { fill: var(--panel); stroke: var(--rule); stroke-width: 1.2; }
+.diagram rect.kg { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.2; }
+.diagram text.t { font-family: var(--f-body); font-size: 12.5px; font-weight: 600; fill: var(--ink); }
+.diagram text.s { font-family: var(--f-mono); font-size: 10.5px; fill: var(--ink-2); }
+.diagram path { fill: none; stroke: var(--ink-3); stroke-width: 1.3; }
+.diagram .arrowhead { fill: var(--ink-3); stroke: none; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; font-size: 0.84rem; }
+.kv dt { font: 0.78rem var(--f-mono); color: var(--ink-3); }
+.kv dd { margin: 0; }
+.chip { font: 500 0.72rem var(--f-mono); padding: 2px 6px; border-radius: 3px; background: var(--idle-bg); color: var(--ink-2); white-space: nowrap; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+
+/* log */
+.log { display: grid; gap: 0; }
+.log .row { display: grid; grid-template-columns: 9.5rem 6.5rem minmax(0, 1fr); gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--rule); font-size: 0.88rem; }
+.log .when { font: 0.78rem var(--f-mono); color: var(--ink-3); }
+@media (max-width: 600px) { .log .row { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+@media (prefers-reduced-motion: no-preference) { .run, .panel { transition: border-color .2s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Therapeutic · Phase 7 · unseen drug on L1000</div>
+    <h1>Integrated Model Tracker</h1>
+    <p class="muted">Morgan drug encoder, PrimeKG RGCN prior and a factorized decoder, trained end to end on LINCS L1000 Level-5 signatures. Each arm changes only the knowledge graph. Results arrive here as Slurm runs finish.</p>
+    <div class="meta"><span>Owner: Yuqi Lei</span><span>Direction: Jun Wen</span><span>Weekly record: report/MM_DD_record.md</span><span id="sync">Connecting to results store…</span></div>
+  </header>
+
+  <section aria-labelledby="h-runs">
+    <div class="sec-head"><h2 id="h-runs">Runs</h2><span class="eyebrow">Slurm jobs, newest first</span></div>
+    <div id="runs" class="runs"><div class="empty">Runs appear here once the first job is registered.</div></div>
+  </section>
+
+  <section aria-labelledby="h-res" class="panel">
+    <div class="sec-head"><h2 id="h-res">Results</h2><span class="eyebrow">Line-macro Pearson, ACTIVE rows (TAS ≥ 0.2)</span></div>
+    <div class="controls">
+      <div class="ctl"><label for="sel-run">Run</label><select id="sel-run"></select></div>
+      <div class="ctl"><label id="lab-cohort">Cohort</label>
+        <div class="seg" role="group" aria-labelledby="lab-cohort" id="seg-cohort">
+          <button type="button" data-v="ACTIVE" aria-pressed="true">All compounds</button>
+          <button type="button" data-v="ACTIVE_in_kg" aria-pressed="false">In PrimeKG</button>
+        </div></div>
+      <div class="ctl"><label id="lab-metric">Metric</label>
+        <div class="seg" role="group" aria-labelledby="lab-metric" id="seg-metric">
+          <button type="button" data-v="pearson_full" aria-pressed="true">Full signature</button>
+          <button type="button" data-v="pearson_resid" aria-pressed="false">Residual from mean</button>
+        </div></div>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="charts">
+      <div class="chart-box">
+        <h3>Absolute score by arm</h3>
+        <div class="svgwrap" id="abs"></div>
+        <div class="cap" id="abs-cap"></div>
+      </div>
+      <div class="chart-box">
+        <h3>Paired differences, 95% bootstrap over ik14 groups</h3>
+        <div class="svgwrap" id="forest"></div>
+        <div class="cap">Dot = line-macro difference; bar = 95% interval; right column = lines (of 7) where the first arm wins.</div>
+      </div>
+    </div>
+    <details><summary>Show as tables</summary><div class="tbl" id="tables"></div></details>
+  </section>
+
+  <section aria-labelledby="h-pipe">
+    <div class="sec-head"><h2 id="h-pipe">Pipeline design</h2><span class="eyebrow">v1.1 · 2026-10-09 01:15</span></div>
+    <div class="pipe-grid">
+      <div class="panel diagram" style="overflow-x:auto">
+        <svg viewBox="0 0 640 400" role="img" aria-label="Model diagram: compound fingerprints, PrimeKG subgraph and disease text feed an RGCN; drug and gene vectors meet in a per-line bilinear decoder that predicts the residual signature.">
+          <defs><marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="arrowhead" d="M0,0 L8,4 L0,8 z"/></marker></defs>
+          <rect class="box" x="10" y="20" width="170" height="58" rx="5"/><text class="t" x="22" y="43">Compound</text><text class="s" x="22" y="62">Morgan2, 2,048 bits</text>
+          <rect class="box" x="10" y="98" width="170" height="58" rx="5"/><text class="t" x="22" y="121">Disease nodes</text><text class="s" x="22" y="140">SapBERT name + PubMedBERT def</text>
+          <rect class="box" x="10" y="176" width="170" height="58" rx="5"/><text class="t" x="22" y="199">Gene / other drug nodes</text><text class="s" x="22" y="218">free embeddings</text>
+          <rect class="box" x="10" y="290" width="170" height="58" rx="5"/><text class="t" x="22" y="313">Landmark genes</text><text class="s" x="22" y="332">978, free embedding e_g</text>
+          <rect class="box" x="225" y="20" width="150" height="58" rx="5"/><text class="t" x="237" y="43">DrugEnc</text><text class="s" x="237" y="62">2048→512→128, LN</text>
+          <rect class="kg" x="225" y="104" width="150" height="124" rx="5"/><text class="t" x="237" y="128">RGCN on PrimeKG</text><text class="s" x="237" y="148">2 layers, mean aggr.</text><text class="s" x="237" y="166">residual + LayerNorm</text><text class="s" x="237" y="184">arm sets the relations</text><text class="s" x="237" y="202">+0.1 × scaled DistMult loss</text><text class="s" x="237" y="220">full graph every step</text>
+          <rect class="box" x="420" y="60" width="200" height="66" rx="5"/><text class="t" x="432" y="84">Drug vector h_d</text><text class="s" x="432" y="104">compound node state</text><text class="s" x="432" y="118">(skel: DrugEnc only)</text>
+          <rect class="box" x="420" y="236" width="200" height="66" rx="5"/><text class="t" x="432" y="260">Gene vector e_g</text><text class="s" x="432" y="280">free + KG node state</text><text class="s" x="432" y="294">(30 landmarks not in KG)</text>
+          <rect class="kg" x="420" y="140" width="200" height="82" rx="5"/><text class="t" x="432" y="164">Decoder, per line l</text><text class="s" x="432" y="184">Δ = ⟨W_l LN(h_d), LN(e_g)⟩/√128</text><text class="s" x="432" y="200">+ line×gene training mean</text><text class="s" x="432" y="214">MSE on Level-5 z</text>
+          <path d="M180,49 H225" marker-end="url(#ah)"/>
+          <path d="M375,49 H398 V93 H420" marker-end="url(#ah)"/>
+          <path d="M300,78 V104" marker-end="url(#ah)"/>
+          <path d="M180,127 H225" marker-end="url(#ah)"/>
+          <path d="M180,205 H225" marker-end="url(#ah)"/>
+          <path d="M375,150 H398 V108 H420" marker-end="url(#ah)"/>
+          <path d="M375,200 H398 V258 H420" marker-end="url(#ah)"/>
+          <path d="M180,319 H398 V280 H420" marker-end="url(#ah)"/>
+          <path d="M520,126 V140" marker-end="url(#ah)"/>
+          <path d="M520,236 V222" marker-end="url(#ah)"/>
+          <text class="s" x="225" y="372">Graph v1: 32,024 nodes · 939,170 directed edges · 11 relation types</text>
+          <text class="s" x="225" y="388">P1-24: 1,117 / 8,119 compounds have drug–disease edges; P2-24: 708 / 1,725</text>
+        </svg>
+      </div>
+      <div class="panel" style="display:grid;gap:14px">
+        <h3>Arms</h3>
+        <div class="tbl"><table>
+          <thead><tr><th>Arm</th><th>Knowledge graph relations</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><span class="sw" style="background:var(--s1)"></span><span class="mono">skel</span></td><td>none (gate: match chemistry KRR)</td><td><span class="chip">round 1</span></td></tr>
+            <tr><td><span class="sw" style="background:var(--s2)"></span><span class="mono">kg_a</span></td><td>PPI + drug–disease + disease–gene</td><td><span class="chip">round 1</span></td></tr>
+            <tr><td><span class="sw" style="background:var(--s3)"></span><span class="mono">kg_b</span></td><td>drug–disease + disease–gene</td><td><span class="chip">round 1</span></td></tr>
+            <tr><td><span class="sw" style="background:var(--s4)"></span><span class="mono">kg_t</span></td><td>kg_a + drug–target</td><td><span class="chip">defined, not run</span></td></tr>
+            <tr><td class="mono">nulls</td><td>rewired / label-shuffled KG</td><td><span class="chip">deferred</span></td></tr>
+          </tbody></table></div>
+        <h3>Settings</h3>
+        <dl class="kv">
+          <dt>Task</dt><dd>unseen drug, ik14 folds (5), 1 seed</dd>
+          <dt>Slices</dt><dd>P1-24 (primary), P2-24</dd>
+          <dt>Target</dt><dd>continuous z, residual from line mean</dd>
+          <dt>Width</dt><dd>D = 128, dropout 0.2</dd>
+          <dt>Optimiser</dt><dd>AdamW 1e-3, wd 1e-4, clip 1.0</dd>
+          <dt>Batch</dt><dd>128 compounds per step</dd>
+          <dt>Stopping</dt><dd>≤ 200 epochs, patience 20 on inner-val Pearson</dd>
+          <dt>Shrinkage</dt><dd>output α chosen on inner validation</dd>
+          <dt>Bar to beat</dt><dd>krr_morgan2: 0.331 full on P1-24</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-log">
+    <div class="sec-head"><h2 id="h-log">Decisions and changes</h2><span class="eyebrow">newest first</span></div>
+    <div class="panel log" id="log"><div class="empty">Decisions and design changes appear here.</div></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const SERIES = { skel: "--s1", kg_a: "--s2", kg_b: "--s3", kg_t: "--s4" };
+  const BASE = { mean: "per-line mean", krr_morgan2: "KRR Morgan2", knn_morgan2: "kNN Morgan2", krr_chem_target: "KRR chem+target" };
+  const ORDER = ["skel", "kg_a", "kg_b", "kg_t", "krr_morgan2", "knn_morgan2", "krr_chem_target", "mean"];
+  const state = { runs: [], arms: [], contrasts: [], log: [], run: null, cohort: "ACTIVE", metric: "pearson_full" };
+  const $ = (id) => document.getElementById(id);
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const f3 = (x) => (x == null || isNaN(x) ? "–" : (+x).toFixed(3));
+  const f4s = (x) => (x == null || isNaN(x) ? "–" : (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(4));
+  try { const s = JSON.parse(localStorage.getItem("e2e-view") || "{}"); Object.assign(state, { cohort: s.cohort || state.cohort, metric: s.metric || state.metric, run: s.run || null }); } catch (e) {}
+  const remember = () => { try { localStorage.setItem("e2e-view", JSON.stringify({ cohort: state.cohort, metric: state.metric, run: state.run })); } catch (e) {} };
+
+  function renderRuns() {
+    const el = $("runs");
+    if (!state.runs.length) { el.innerHTML = '<div class="empty">Runs appear here once the first job is registered.</div>'; return; }
+    const runs = [...state.runs].sort((a, b) => String(b.submitted || "").localeCompare(String(a.submitted || "")));
+    el.innerHTML = runs.map((r) => {
+      const st = esc(r.status || "queued");
+      const facts = [r.job && "job " + r.job, r.slice, r.device, r.sec_per_step && r.sec_per_step + " s/step"].filter(Boolean).map(esc).map((x) => `<span>${x}</span>`).join("");
+      return `<div class="run"><div class="top"><span class="id">${esc(r.label || r.id)}</span><span class="pill st-${st}">${st}</span></div>
+        ${r.note ? `<div class="note">${esc(r.note)}</div>` : ""}<div class="facts">${facts}</div></div>`;
+    }).join("");
+  }
+
+  function runOptions() {
+    const sel = $("sel-run");
+    const withRes = state.runs.filter((r) => state.arms.some((a) => a.run === r.id));
+    if (!withRes.length) { sel.innerHTML = '<option value="">No finished runs yet</option>'; sel.disabled = true; state.run = null; return; }
+    sel.disabled = false;
+    if (!withRes.some((r) => r.id === state.run)) state.run = (withRes.find((r) => r.status === "done" && !r.smoke) || withRes[0]).id;
+    sel.innerHTML = withRes.map((r) => `<option value="${esc(r.id)}"${r.id === state.run ? " selected" : ""}>${esc(r.label || r.id)}${r.smoke ? " (smoke, do not quote)" : ""}</option>`).join("");
+  }
+
+  function color(arm) { return SERIES[arm] ? css(SERIES[arm]) : css("--base"); }
+  const tipEl = (host) => { let t = host.querySelector(".tip"); if (!t) { t = document.createElement("div"); t.className = "tip"; t.hidden = true; host.appendChild(t); } return t; };
+  function bindTips(host) {
+    const tip = tipEl(host);
+    host.querySelectorAll("[data-tip]").forEach((n) => {
+      n.addEventListener("mouseenter", () => { const r = n.getBoundingClientRect(), h = host.getBoundingClientRect(); tip.textContent = n.dataset.tip; tip.style.left = (r.left + r.width / 2 - h.left + host.scrollLeft) + "px"; tip.style.top = (r.top - h.top) + "px"; tip.hidden = false; });
+      n.addEventListener("mouseleave", () => { tip.hidden = true; });
+    });
+  }
+  function axisTicks(lo, hi, n) { const step = (hi - lo) / n; const p = Math.pow(10, Math.floor(Math.log10(step))); const s = [1, 2, 2.5, 5, 10].map((m) => m * p).find((m) => m >= step); const out = []; for (let v = Math.ceil(lo / s) * s; v <= hi + 1e-9; v += s) out.push(+v.toFixed(6)); return out; }
+
+  function renderAbs(rows) {
+    const host = $("abs");
+    if (!rows.length) { host.innerHTML = '<div class="empty">No scores for this run and cohort yet.</div>'; $("abs-cap").textContent = ""; return; }
+    const vals = rows.map((r) => r.v);
+    let lo = Math.min(...vals), hi = Math.max(...vals); const pad = Math.max(0.01, (hi - lo) * 0.15); lo -= pad; hi += pad;
+    const W = 460, L = 130, R = 56, rowH = 30, T = 8, H = T + rows.length * rowH + 26;
+    const x = (v) => L + (v - lo) / (hi - lo) * (W - L - R);
+    const ticks = axisTicks(lo, hi, 4);
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:360px" role="img" aria-label="Absolute line-macro scores by arm">`;
+    ticks.forEach((t) => { s += `<line x1="${x(t)}" x2="${x(t)}" y1="${T}" y2="${H - 22}" stroke="${css("--grid")}"/><text x="${x(t)}" y="${H - 6}" text-anchor="middle">${t.toFixed(2)}</text>`; });
+    const ref = rows.find((r) => r.arm === "krr_morgan2");
+    if (ref) s += `<line x1="${x(ref.v)}" x2="${x(ref.v)}" y1="${T}" y2="${H - 22}" stroke="${css("--base")}" stroke-dasharray="4 3" stroke-width="1.5"/>`;
+    rows.forEach((r, i) => {
+      const cy = T + i * rowH + rowH / 2, base = !SERIES[r.arm];
+      s += `<text class="lbl" x="${L - 10}" y="${cy + 4}" text-anchor="end">${esc(BASE[r.arm] || r.arm)}</text>`;
+      s += `<line x1="${L}" x2="${x(r.v)}" y1="${cy}" y2="${cy}" stroke="${css("--grid")}" stroke-width="2"/>`;
+      s += `<circle cx="${x(r.v)}" cy="${cy}" r="${base ? 5 : 6.5}" fill="${base ? css("--panel") : color(r.arm)}" stroke="${base ? css("--base") : css("--panel")}" stroke-width="2"/>`;
+      s += `<text x="${x(r.v) + 11}" y="${cy + 4}">${f3(r.v)}</text>`;
+      s += `<rect x="0" y="${cy - rowH / 2}" width="${W}" height="${rowH}" fill="transparent" data-tip="${esc(r.arm)}: ${f3(r.v)} · ${r.rows || "?"} rows"/>`;
+    });
+    host.innerHTML = s + "</svg>";
+    bindTips(host);
+    $("abs-cap").textContent = ref ? "Dashed line = KRR on Morgan2, the bar the skeleton must reach. Hollow dots are baselines from the kNN/KRR runner." : "Hollow dots are baselines from the kNN/KRR runner.";
+  }
+
+  function renderForest(rows) {
+    const host = $("forest");
+    if (!rows.length) { host.innerHTML = '<div class="empty">No paired contrasts for this run and cohort yet.</div>'; return; }
+    const ext = Math.max(0.005, ...rows.flatMap((r) => [Math.abs(r.low), Math.abs(r.high), Math.abs(r.diff)])) * 1.12;
+    const W = 540, L = 160, R = 52, rowH = 30, T = 8, H = T + rows.length * rowH + 26;
+    const x = (v) => L + (v + ext) / (2 * ext) * (W - L - R);
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:400px" role="img" aria-label="Paired differences with 95 percent intervals">`;
+    axisTicks(-ext, ext, 4).forEach((t) => { s += `<line x1="${x(t)}" x2="${x(t)}" y1="${T}" y2="${H - 22}" stroke="${css("--grid")}"/><text x="${x(t)}" y="${H - 6}" text-anchor="middle">${t > 0 ? "+" : ""}${t.toFixed(3)}</text>`; });
+    s += `<line x1="${x(0)}" x2="${x(0)}" y1="${T}" y2="${H - 22}" stroke="${css("--ink-3")}" stroke-width="1.5"/>`;
+    rows.forEach((r, i) => {
+      const cy = T + i * rowH + rowH / 2;
+      s += `<text class="lbl" x="${L - 10}" y="${cy + 4}" text-anchor="end">${esc(r.arm)} − ${esc(BASE[r.minus] ? r.minus : r.minus)}</text>`;
+      s += `<line x1="${x(r.low)}" x2="${x(r.high)}" y1="${cy}" y2="${cy}" stroke="${color(r.arm)}" stroke-width="2" stroke-linecap="round"/>`;
+      s += `<circle cx="${x(r.diff)}" cy="${cy}" r="5.5" fill="${color(r.arm)}" stroke="${css("--panel")}" stroke-width="2"/>`;
+      s += `<text x="${W - 4}" y="${cy + 4}" text-anchor="end">${r.lines_positive}/${r.n_lines}</text>`;
+      s += `<rect x="0" y="${cy - rowH / 2}" width="${W}" height="${rowH}" fill="transparent" data-tip="${esc(r.arm)} − ${esc(r.minus)}: ${f4s(r.diff)} [${f4s(r.low)}, ${f4s(r.high)}] · ${r.lines_positive}/${r.n_lines} lines"/>`;
+    });
+    host.innerHTML = s + "</svg>";
+    bindTips(host);
+  }
+
+  function renderResults() {
+    runOptions();
+    $("seg-cohort").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === state.cohort)));
+    $("seg-metric").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === state.metric)));
+    const absRows = state.arms.filter((a) => a.run === state.run && a.cohort === state.cohort && a[state.metric] != null)
+      .map((a) => ({ arm: a.arm, v: a[state.metric], rows: a.rows }))
+      .sort((a, b) => (ORDER.indexOf(a.arm) + 99) % 99 - (ORDER.indexOf(b.arm) + 99) % 99);
+    const con = state.contrasts.filter((c) => c.run === state.run && c.cohort === state.cohort && c.metric === state.metric);
+    renderAbs(absRows); renderForest(con);
+    const present = [...new Set(absRows.map((r) => r.arm))];
+    $("legend").innerHTML = present.filter((a) => SERIES[a]).map((a) => `<span><i style="background:var(${SERIES[a]})"></i>${esc(a)}</span>`).join("") +
+      (present.some((a) => !SERIES[a]) ? '<span><i style="background:transparent;border:2px solid var(--base)"></i>baseline</span>' : "") +
+      (present.includes("krr_morgan2") ? '<span><i class="ref"></i>KRR Morgan2 bar</span>' : "");
+    $("tables").innerHTML = absRows.length ? `<table><thead><tr><th>Arm</th><th style="text-align:right">Score</th><th style="text-align:right">Rows</th></tr></thead><tbody>${absRows.map((r) => `<tr><td class="mono">${esc(r.arm)}</td><td class="num">${f3(r.v)}</td><td class="num">${r.rows ?? "–"}</td></tr>`).join("")}</tbody></table>` +
+      (con.length ? `<table style="margin-top:12px"><thead><tr><th>Contrast</th><th style="text-align:right">Diff</th><th style="text-align:right">95% interval</th><th style="text-align:right">Lines +</th></tr></thead><tbody>${con.map((c) => `<tr><td class="mono">${esc(c.arm)} − ${esc(c.minus)}</td><td class="num">${f4s(c.diff)}</td><td class="num">[${f4s(c.low)}, ${f4s(c.high)}]</td><td class="num">${c.lines_positive}/${c.n_lines}</td></tr>`).join("")}</tbody></table>` : "") : '<p class="muted">No rows.</p>';
+  }
+
+  function renderLog() {
+    const el = $("log");
+    if (!state.log.length) { el.innerHTML = '<div class="empty">Decisions and design changes appear here.</div>'; return; }
+    el.innerHTML = [...state.log].sort((a, b) => String(b.at).localeCompare(String(a.at))).map((l) =>
+      `<div class="row"><span class="when">${esc(l.at)}</span><span><span class="chip">${esc(l.kind)}</span></span><span>${esc(l.text)}</span></div>`).join("");
+  }
+
+  $("sel-run").addEventListener("change", (e) => { state.run = e.target.value; remember(); renderResults(); });
+  $("seg-cohort").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; state.cohort = b.dataset.v; remember(); renderResults(); });
+  $("seg-metric").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; state.metric = b.dataset.v; remember(); renderResults(); });
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  mq.addEventListener?.("change", () => renderResults());
+  new MutationObserver(() => renderResults()).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  renderRuns(); renderResults(); renderLog();
+
+  (async () => {
+    const db = await window.claude?.use?.("db");
+    if (!db) { $("sync").textContent = "Results store unavailable in this view"; return; }
+    const sub = (name, key, after) => db.collection(name).onSnapshot((snap) => {
+      const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      // arms/contrasts: one document per run holding its rows
+      state[key] = (key === "arms" || key === "contrasts") ? docs.flatMap((d) => (d.rows || []).map((r) => ({ run: d.id, ...r }))) : docs;
+      $("sync").textContent = "Live · updated " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      after();
+    }, () => { $("sync").textContent = "Results store disconnected; reload the page"; });
+    sub("runs", "runs", () => { renderRuns(); renderResults(); });
+    sub("arms", "arms", renderResults);
+    sub("contrasts", "contrasts", renderResults);
+    sub("log", "log", renderLog);
+  })();
+})();
+</script>

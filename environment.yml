@@ -1,0 +1,20 @@
+name: therapeutic
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pandas=2.3
+  - pyarrow=21
+  - numpy=2.2
+  - scipy=1.16
+  - scikit-learn=1.7
+  - h5py=3.14
+  - anndata=0.12
+  - scanpy=1.11
+  - datasets=4.0
+  - huggingface_hub=0.34
+  - requests=2.32
+  - rdkit
+  - pyyaml=6
+  - tomli=2
+  - pip

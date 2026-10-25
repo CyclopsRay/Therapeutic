@@ -1,0 +1,71 @@
+\section{A control ladder for network priors}
+\label{sec:framework}
+
+\subsection{Data and tasks}
+\label{sec:data}
+% SRC: report/10_09_report.md §1.1 (L1000 slices), §1.8 (Tahoe), §4.4 (plate-map split).
+\note{Keep short; full details in Appendix A.}
+\begin{itemize}
+  \item LINCS L1000 Level 5, 24\,h, 10\,\textmu M: P1-24 (GSE92742; 7 lines, 8{,}119 compounds,
+        31{,}229 signatures) and P2-24 (GSE70138; 7 lines, 1{,}725 compounds, 11{,}676 signatures);
+        978 landmark genes. Compounds = RDKit-standardised parent InChIKey.
+  \item Tahoe-100M, 5\,\textmu M (T-5): 350 compounds $\times$ 50 lines, pseudobulk deltas against
+        plate-matched DMSO, 2{,}000 genes.
+  \item Task: unseen compound; folds grouped by InChIKey connectivity block (stereoisomers never
+        straddle train/test) and, as the stricter split, by L1000 plate map.
+  \item Drug targets: LINCS 2020 compound annotation mapped to HGNC symbols.
+  \item Published-model audits use each model's own data and split (DeepCE: pert\_id-disjoint L1000;
+        GSNN: exp1 cell--drug split; GEARS: Norman; PDGrapher: A549 fold 1).
+\end{itemize}
+
+\subsection{Networks}
+% SRC: report/10_09_report.md §6 header.
+Eight networks, HGNC-harmonised: STRING v12.0 physical ($\geq 400$) and functional ($\geq 700$),
+BioGRID 5.0.262 physical, HuRI, PrimeKG v2.1 PPI, OmniPath (directed, consensus sign),
+CollecTRI (TF$\to$target), and OmniPath+CollecTRI. \note{Table A1: nodes, edges, median degree,
+$\rho$(degree, publications) per network.}
+
+\subsection{The ladder}
+\label{sec:ladder}
+% SRC: scripts/netnull.py; repro/gsnn/ladder.py.
+For a graph $G$ used by a model we compare:
+\begin{enumerate}
+  \item \real: the published graph;
+  \item \rewired: double-edge swaps preserving every degree (in- and out-degree for directed graphs),
+        $5|E|$ swaps, $\geq 3$ seeds;
+  \item \textsc{labels}: node identities permuted (same topology, genes reassigned);
+  \item \textsc{random}: same number of edges placed uniformly (degree destroyed);
+  \item \textsc{empty}: no edges (self-loops kept when the model requires them);
+  \item \textsc{degree-only}: no graph, node degree supplied as a feature.
+\end{enumerate}
+\real{} $-$ \rewired{} isolates wiring; \rewired{} $-$ \textsc{random} isolates degree;
+the published random-graph control corresponds to \real{} $-$ \textsc{random} and conflates the two.
+For multi-edge-set models (GSNN) each edge set is perturbed separately
+(drug$\to$protein, protein$\to$protein, protein$\to$output). \note{Fig.~1A: ladder schematic.}
+
+\subsection{Model-free information test}
+\label{sec:infotest}
+% SRC: scripts/analyze_ppi_information.py, scripts/analyze_network_information.py; report §4.6, §6.
+Before training anything, we ask what a network can tell about the residual response
+$r_{d,l,g} = y_{d,l,g} - \bar y_{l,g}$ of drug $d$ in line $l$ at gene $g$:
+\begin{itemize}
+  \item \textbf{Locality} $A_{\mathrm{rel}}$: mean within-gene standardised $|r|$ at genes one hop from the drug's
+        nearest target minus at genes $\geq 3$ hops away, after dividing each signature by its own mean
+        $|r|$ (removes drug-level magnitude).
+  \item \textbf{Pair similarity} $B_{d}$: Pearson of residual signatures of drug pairs measured on different
+        plates, binned by the hop distance $d$ between their target sets.
+  \item \textbf{Degree} $C$: Spearman between the drug's mean $\log(1+\text{target degree})$ and its
+        response norm; partial version after regressing out per-gene publication counts (gene2pubmed).
+\end{itemize}
+Each statistic is computed on \real{} and on the ladder; line-macro means; ``lines+'' counts lines
+where \real{} exceeds the rewired mean. \note{Fig.~1B: the three statistics on a toy graph.}
+
+\subsection{Why rewiring preserves the propagated signal}
+\label{sec:theory}
+\pending{E9: short derivation.} \note{Proposition: under the configuration model with degree sequence
+$k$, the expected one-hop mass from target set $S$ to gene $g$ is
+$\sum_{s\in S} k_s k_g / (2m)$, a function of degrees only; by induction, the expected $t$-step random-walk
+mass depends on $k$ only up to $O(1/m)$ corrections (to be checked: degree-degree correlations,
+multi-edges). Hence propagation features computed on \rewired{} are, in expectation, a function of
+degrees alone: whatever a model gains on \rewired{} is degree, and only the excess \real{} $-$
+\rewired{} can be attributed to wiring. Proof in Appendix B.}

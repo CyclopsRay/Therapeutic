@@ -1,0 +1,78 @@
+\section{Results}
+
+% =====================================================================================================
+\subsection{Interaction networks carry target degree; wiring is confined to directed regulation}
+\label{sec:info}
+% SRC: report/10_09_report.md §6 (job 296788), §4.6 (job 294863);
+%      /nfs-stor/yuqi.lei/Therapeutic/results/network_information/<slice>_<network>.csv
+\note{Lead with the degree finding, then the one place wiring shows up. Fig.~2: heatmap networks
+$\times$ datasets for $C$ (degree), $A_{\mathrm{rel}}$ real$-$rewired, $B_1$ real$-$rewired.}
+
+\paragraph{Degree predicts response magnitude.}
+In every curated undirected network and in OmniPath, a drug's target degree predicts the magnitude of
+its response ($\rho = 0.12$--$0.34$; strongest on Tahoe), and the association survives removing
+per-gene publication counts ($\rho = 0.10$--$0.36$). It is absent where degree is unrelated to study
+bias by design (HuRI, a systematic screen) and in CollecTRI.
+% Table: C real / C after pub correction / rho(degree, pubs) -- §6 columns 4-6.
+
+\paragraph{Locality is degree.}
+The raw excess response at one-hop neighbours of a target (0.16--0.21 SD) is the same on the rewired
+graph and vanishes when targets are permuted among compounds (§4.6).
+After removing drug-level magnitude, undirected PPI networks retain $+0.00$ to $+0.03$ beyond
+rewiring; directed signalling and TF networks retain $+0.03$ to $+0.07$ (6/7--7/7 lines in both L1000
+phases): OmniPath $+0.055/+0.036$, CollecTRI $+0.066/+0.031$, combined $+0.063/+0.028$ (P1-24/P2-24).
+% SRC numbers: §6 column A_rel.
+
+\paragraph{Neighbouring targets barely make drugs alike.}
+Drug pairs whose targets are adjacent respond more alike than on rewired graphs by at most
+$+0.014$ in any network and dataset---about a tenth of the shared-target excess ($r = 0.13$--$0.18$);
+two hops apart is indistinguishable from rewired.
+
+% =====================================================================================================
+\subsection{Published and new network models under the ladder}
+\label{sec:audit}
+\note{Fig.~3: one panel per model, bars \real/\rewired/\textsc{labels}/\textsc{random}/\textsc{empty}
+with seed spread; consistent y-axis = model's own primary metric.}
+
+\paragraph{DeepCE.}
+% SRC: report/10_09_report.md §5.3 (jobs 294915-294917), §5.4 (jobs 296800, 296888-296890).
+STRING gene vectors in DeepCE ($0.455 \pm 0.026$ test Pearson, 3 seeds) do not exceed matched random
+vectors ($0.458$) and are below a one-hot gene identity ($0.466$; $-0.011$, 95\% CI $[-0.021,-0.003]$).
+Node2vec vectors from the real graph do not exceed those from the rewired ($+0.013$ $[-0.005,0.031]$)
+or label-permuted graph ($+0.007$ $[-0.002,0.016]$); they exceed only the uniform random graph
+($+0.023$ $[0.003,0.043]$)---the degree effect.
+
+\paragraph{GSNN.}
+\pending{E4: jobs 310548 (ladder A) and 310549 (B+C), fold 0, default hyper-parameters.
+Report real vs rewired0-2, labels0-2, er0, empty, in\_shuffle0, out\_shuffle0 and GSNN's own
+all-three control (gsnn\_random0), which should reproduce the published gap.}
+\note{Key sentence to earn: GSNN's published +24\% decomposes into degree (rewired vs random) and
+target identity (in\_shuffle), not wiring.}
+
+\paragraph{GEARS and PDGrapher.}
+\pending{E5 GEARS Norman GO ladder (job 297743 status unknown after the 2026-10-09 outage);
+E6 PDGrapher A549 fold 1 ladder (not yet submitted; GPU quota).}
+
+\paragraph{Our model families.}
+% SRC: report §8 (G3b, jobs 307277-307280), §4.5 (294396), §4.7 (296290/296291), §7 (MKL).
+Across a per-drug GCN, a GNN with dot-product head, an MLP with propagated target features and kernel
+models, $|\real{} - \rewired{}| \leq 0.002$ full Pearson on unseen compounds (GCN $+0.0003$
+$[0.0000, 0.0006]$ on P1-24; dot-product GNN $+0.0005$/$+0.0018$; one-hop PPI kernel $+0.000$/$+0.001$).
+The MLP case is the clearest: propagating targets 0--3 hops over STRING helps ($+0.009$
+$[0.005, 0.014]$ over hop 0 only), and propagating over the rewired graph helps exactly as much
+($-0.0013$ $[-0.0037, 0.0012]$ real $-$ rewired)---the useful content is degree. \pending{E2: full ladder, 3 networks,
+3 seeds, P2-24/P1-24/Tahoe.} \pending{Integrated KG model: real vs rewired PrimeKG (jobs 310545/310546).}
+
+% =====================================================================================================
+\subsection{What does transfer to unseen compounds}
+\label{sec:tiers}
+% SRC: report/10_09_report.md §7 (jobs 296806/296807), §1.7/§4.4 (plate-controlled), §1.8 (Tahoe).
+\note{Positive half of the paper: the information that does move the needle, measured with its own null.
+Fig.~4: tier ladder T1$\to$T4 with each view's null.}
+Multiple-kernel models over P2-24 show a strict ordering of drug-side information
+(plate-map split, full Pearson): chemistry over the line mean $+0.027$; target identity over permuted
+targets $+0.035$ ($+0.045$ ik14 split); Cell Painting morphology $+0.052$ ($+0.088$); the drug's
+measured response in other lines $+0.131$ ($+0.126$). The one-hop PPI kernel equals its rewired null
+($+0.000$), and a degree-feature kernel adds $+0.002$--$0.004$.
+\pending{E8: targets + degree features without wiring vs the network models, all datasets.}
+\pending{Signed regulatory view (OmniPath+CollecTRI) in the kernel model: jobs 302096/302097 to resubmit.}

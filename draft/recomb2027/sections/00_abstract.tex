@@ -1,0 +1,25 @@
+% ABSTRACT -- first full draft; numbers marked PENDING are filled once E2/E4-E6/E8 land.
+% Order: problem -> gap -> what we do -> strongest results -> meaning (5 sentences before any detail).
+\begin{abstract}
+Protein interaction networks and knowledge graphs are now a standard ingredient of models that predict
+transcriptional responses to drugs and genetic perturbations, and published ablations credit the network
+with substantial gains.
+Those ablations compare against random graphs that destroy the degree distribution, so they cannot tell
+whether a model uses \emph{which} genes interact or only \emph{how many} interactions each gene has.
+We introduce a control ladder for network priors---degree-preserving rewiring, node-label permutation,
+edge-count-matched random graphs and an empty graph---together with a model-free information test that
+measures what a network can carry about responses before any model is trained.
+Across eight interaction networks and three perturbation datasets (LINCS L1000 at two phases and Tahoe-100M),
+the dominant network signal is target degree: drugs whose targets are hubs elicit stronger responses
+(Spearman $\rho = 0.12$--$0.34$), an association that survives correction for publication bias, while
+wiring beyond degree is small in undirected protein networks and appears clearly only in directed
+signalling and transcription-factor networks (+0.03 to +0.07).
+Auditing published and new models with the ladder, the real network is indistinguishable from its
+degree-preserving rewiring in DeepCE (gene vectors replaceable by a one-hot identity), in graph neural
+networks over STRING, and \pending{in GSNN, GEARS and PDGrapher}, whereas the drug-side information that
+does transfer to unseen compounds is target identity, morphology and measured responses.
+The ladder is a cheap, model-agnostic standard for claiming that a network prior helps, and it points to
+directed regulatory structure as the network information worth modelling.
+\end{abstract}
+
+\keywords{perturbation response \and protein interaction networks \and graph neural networks \and null models \and LINCS L1000 \and Tahoe-100M}

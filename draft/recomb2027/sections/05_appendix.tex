@@ -1,0 +1,23 @@
+\section{Data, splits and preprocessing}
+\label{app:data}
+\note{L1000 extraction (Level 5, trt\_cp, 24\,h, 10\,\textmu M), compound standardisation, ik14 and
+plate-map folds, ACTIVE cohort (TAS $\geq 0.2$), Tahoe pseudobulk and plate-matched DMSO deltas;
+SRC report/10_09_report.md §1.1, §1.8, §4.4. Table A1: networks (nodes, edges, median degree,
+$\rho$(degree, publications)).}
+
+\section{Proof of the configuration-model proposition}
+\label{app:theory}
+\pending{E9.}
+
+\section{Information test: full tables}
+\note{All eight networks $\times$ P1-24/P2-24/T-5: $A$, $A_{\mathrm{rel}}$, $B_{0..3}$, $C$, $C_{\mathrm{pub}}$
+with per-line values; SRC results/network_information/*.csv.}
+
+\section{Published-model reproductions}
+\note{DeepCE: reproduction gap (0.455 vs reported 0.4907 with best-dev selection), baselines on its split
+(Morgan kNN 0.451, per-line mean 0.392), seed spread; GSNN/GEARS/PDGrapher: versions, commits, deviations
+(GSNN default hyper-parameters vs the preprint's 100-configuration search; GSNN pinned to 3bedcd0).}
+
+\section{Model families and training details}
+\note{GCN / DotGNN / MLP+propagation / kernel and MKL models; inner group CV; output shrinkage;
+hyper-parameters; compute.}

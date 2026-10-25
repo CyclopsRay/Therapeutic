@@ -1,0 +1,40 @@
+\section{Introduction}
+\label{sec:intro}
+
+% P1 -- the problem and why it matters (no implementation detail).
+\note{P1: Predicting transcriptional response to unseen perturbations is central to drug discovery and
+virtual-cell efforts; networks (PPI, signalling, KGs) are the default way to inject biology.}
+% Cite: L1000 (Subramanian 2017), Tahoe-100M (Zhang 2025), DeepCE (Pham 2021), GSNN (Evans 2024),
+% GEARS, PDGrapher, TxPert, PrimeKG-based models (Passigan 2025).
+
+% P2 -- the gap: published network ablations use controls that cannot separate degree from wiring.
+\note{P2: The evidence that networks help rests on comparisons with uniform random graphs or no graph.
+Those controls change the degree distribution, and degree alone is a strong predictor in gene networks
+(Gillis \& Pavlidis 2011); pathway masks match sparsity-matched random masks (Caranzano 2025); random graphs
+work for expression feature selection (Bertin 2019). GSNN's +24\% over a random graph is a concrete case:
+its control redraws all three edge sets without preserving degree.}
+
+% P3 -- our approach.
+\note{P3: We separate the two with (i) a control ladder applied to any model's graph and (ii) a model-free
+information test asking what a network can carry about responses at all, so a null result is not
+blamed on the training.}
+
+% P4 -- headline results (strongest first).
+\note{P4: Degree, not wiring: target degree predicts response magnitude in every curated network and
+dataset; in models, real $\approx$ rewired everywhere we test; directed regulatory networks are the
+exception at the gene level. Positive side: target identity, morphology and one measured response carry
+the transferable information for unseen drugs.}
+
+% Contributions list (keep to 3-4 items, each one sentence, each tied to a figure).
+\paragraph{Contributions.}
+\begin{itemize}
+  \item A control ladder and a model-free information test for network priors, released as a
+        model-agnostic toolkit (\cref{sec:framework}; Fig.~1).
+  \item A survey of eight networks across L1000 and Tahoe-100M showing that the response information in
+        undirected interaction networks is mostly target degree, with a configuration-model argument for
+        why propagation over a rewired graph retains it (\cref{sec:info}; Fig.~2).
+  \item Audits of published models (DeepCE, GSNN, GEARS, PDGrapher) and of our own model families under
+        the ladder (\cref{sec:audit}; Fig.~3).
+  \item An information-tier analysis identifying what does transfer to unseen compounds, and directed
+        regulatory networks as the network signal worth modelling (\cref{sec:tiers}; Fig.~4).
+\end{itemize}

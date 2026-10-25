@@ -1,0 +1,25 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\note{D1 -- What the ladder changes: a network-prior claim should report \real{} vs \rewired{}
+(and \textsc{labels}), not vs uniform random; cost is one extra training run per seed; toolkit released.}
+
+\note{D2 -- Why degree is what models pick up: hub targets elicit larger responses; propagation on any
+graph with the same degrees reproduces that mass (\cref{sec:theory}); publication bias explains part
+of degree but not the response association (HuRI contrast).}
+
+\note{D3 -- Where network structure is worth modelling: directed, signed regulatory networks carry
+gene-level locality beyond degree (+0.03 to +0.07); target identity, morphology and a single measured
+response carry far more drug-side information than undirected wiring. Direction for model builders:
+signed regulatory structure on the gene side, target identity on the drug side.}
+
+\note{D4 -- Scope (one short paragraph, stated as scope, not as weakness): chemical perturbations on
+L1000/Tahoe plus GEARS on genetic perturbations; ladder applies unchanged to other graphs.}
+
+\section{Conclusion}
+\note{Three sentences: degree, not wiring, is what current networks contribute; the ladder makes the
+distinction cheap; directed regulation and target identity are where the information is.}
+
+\paragraph{Code and data availability.}
+\note{Toolkit (netnull.py + ladder wrappers + information test), patches for DeepCE/GSNN/GEARS/PDGrapher
+(wrappers only; DeepCE has no licence), all derived tables; public at submission.}
