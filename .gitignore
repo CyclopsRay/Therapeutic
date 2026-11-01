@@ -34,3 +34,6 @@ external/*/
 # Published papers are re-downloadable from the DOIs in papers/README.md; keep our own talk.
 papers/*.pdf
 !papers/Rhaister_6min_*.pdf
+
+# Paper repo (separate git: git@github.com:CyclopsRay/MKL_Therapeutic.git, synced with Overleaf)
+paper/

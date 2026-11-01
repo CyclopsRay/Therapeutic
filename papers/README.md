@@ -266,6 +266,20 @@ through another paper's citation). Claims that failed verification are listed in
   pathway-informed networks (Caranzano: sparsity). No paper found that audits published PPI/KG
   perturbation-response models (chemical or genetic) with degree-preserving controls; GSNN's random
   control does not preserve degree. Not a systematic review; redo systematically before submission.
+- Null-model prior art for the method framing (web search 2026-10-26, 3 searches; abstracts only, not read in full):
+  **Maslov & Sneppen**, *Science* 2002 (degree-preserving double-edge swap; cite from memory, verify);
+  **Mahadevan et al.**, "Systematic topology analysis and generation using degree correlations", SIGCOMM 2006
+  ([pdf](https://www.caida.org/publications/papers/2006/dk_series/dk_series.pdf); dK-series, 2K = joint degree
+  distribution); **Orsini et al.**, "Quantifying randomness in real networks", *Nat Commun* 6:8627 (2015)
+  ([record](https://ideas.repec.org/a/nat/natcom/v6y2015i1d10.1038_ncomms9627.html); dK-random graphs reproduce
+  most properties of real networks incl. a PPI network; software released); **Erten et al.**, DADA, *BioData
+  Mining* 2011 ([PMC3143097](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3143097/); degree-aware significance
+  for network gene prioritisation); **Picart-Armada et al.**, *Bioinformatics* 2020
+  ([PMC7515737 context](https://pmc.ncbi.nlm.nih.gov/articles/PMC7515737); permutation normalisation of diffusion
+  scores); a proteomics GNN that already uses a degree-preserving prior control
+  ([PMC12676398](https://pmc.ncbi.nlm.nih.gov/articles/PMC12676398)). Implication: degree-matched permutation is
+  known for propagation *scores*; our claim must be the learned-model test with its proposition, calibration/power,
+  2K rung and few-rewire bound, not the rewiring itself. Checked: summary.
 
 ### New drug-side modalities
 
@@ -281,3 +295,55 @@ through another paper's citation). Claims that failed verification are listed in
   dot-product head. Checked: summary.
 - Ahlmann-Eltze, Huber & Anders, *Nat Methods* 2025, and Systema (Viñas Torné et al., *Nat
   Biotechnol* 2025): see report §2.1.
+
+### Disentangling perturbation effects from background variation
+
+- **Fu & Hou, scCAPE**, bioRxiv (2024), [doi:10.1101/2024.05.28.596224](https://www.biorxiv.org/content/10.1101/2024.05.28.596224v1),
+  [code](https://github.com/zcfu21/scCAPE). Single-cell CRISPR screens: adversarial / orthogonal embedding separates
+  perturbation effects from cell-state variation; nonparametric single-cell effect estimates, genetic interactions.
+  Genetic, inference of measured perturbations; no transfer to unseen perturbations, no plate/batch analysis. Related
+  to DECANT only in the idea of separating perturbation effects from background variation. Checked: abstract and
+  full-text scan (2026-10-28).
+
+### Coupling cell context and compound (added 2026-10-30)
+
+Question: how do published models combine the control/cell context with the compound, and is there an explicit
+compound × context term? Context: `report/10_30_record.md` 2026-10-30, results `report/10_30_report.md` §6.
+
+- **Code-checked couplings** (drug-perturbation-benchmark @ 55edbfe, `repro/dpb/upstream/models/`): TranSiGen
+  (`TranSiGen/src/model.py` forward) encodes the control profile with a VAE and feeds [z_control, drug embedding] to an
+  MLP that outputs the treated latent; PRnet (`PRnet/models/PRnet.py`) concatenates [control, adaptor(drug)] into its
+  encoder and [z, drug, noise] into its decoder; XPert (`XPert/models/model_XPert.py`) turns the control profile into
+  gene tokens that cross-attend to UniMol drug-atom tokens (dual treated/control branches). All are trained jointly
+  on the full response; on Bai et al.'s drug-blind benchmark, zeroing their drug input changes PCC_DEG by ≤ 0.0125
+  (`10_30_report.md` §5.6). Checked: code.
+- **Molina & Zhang**, response decomposition (registry "Read first" #6; full text sections read 2026-10-30): CRISPRi
+  Perturb-seq, reproducible variance = line template 27.8%, conserved perturbation 29.4%, perturbation × line
+  interaction 23.5%, noise 19.3%. Control expression predicts the low-dimensional global component but not the
+  perturbation or interaction components; adding target-line controls (incl. fine-tuning MORPH) did not change this.
+  The interaction becomes learnable when some responses in the target line are observed, even for disjoint
+  perturbation sets. Its Tahoe analysis is chemical one-shot transfer (5 lines, 268 compounds): source-line responses
+  beat Morgan and Chemical Checker. Checked: full text (extracted with pypdf).
+- **Cichonska et al., pairwiseMKL**, *Bioinformatics* 34(13):i509 (2018), [PMC6022556](https://pmc.ncbi.nlm.nih.gov/articles/PMC6022556):
+  pairwise kernels = Kronecker products of drug kernels and cell-line kernels, MKL weights, then pairwise regularised
+  least squares, without forming the pairwise matrix; drug-cell sensitivity and kinome target profiles. The closest
+  methodological precedent for UnDetect's K_drug ⊗ (ρ + δ_line). Checked: summary.
+- **Stock, Pahikkala, Airola, De Baets & Waegeman**, two-step KRR, [arXiv 1606.04275](https://arxiv.org/abs/1606.04275);
+  comparative study [arXiv 1803.01575](https://arxiv.org/abs/1803.01575): independent-task KRR, two-step KRR and a
+  linear matrix filter are special cases of Kronecker KRR. UnDetect's "shared + per-line KRR" fits this family.
+  Checked: summary.
+- **Gönen & Margolin**, kernelized Bayesian multitask learning, *Bioinformatics* 30(17) (2014); **Costello et al.**,
+  NCI-DREAM drug sensitivity, *Nat Biotechnol* (2014): Bayesian multitask MKL ranked first. Cell-line kernels from
+  multiple omics. Checked: summary (method–winner link not verified).
+- **Hodos et al.**, PSB 2018, [PMC5753597](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5753597/): drug × gene × cell
+  tensor; local kNN vs global tensor completion, complementary; r up to 0.68. Requires the drug measured in some
+  cell type (our "oracle" regime, not unseen compounds). Checked: summary.
+- **Lotfollahi et al., CPA**, *Mol Syst Biol* (2023) and **chemCPA** (NeurIPS 2022): latent-additive basal + drug(dose)
+  + covariate embeddings with a nonlinear decoder; compound × context interaction only through the decoder. Checked:
+  summary.
+- **Klein et al., CellFlow**, bioRxiv 2025.04.11.648220: flow matching from control to perturbed populations;
+  perturbation/covariates aggregated into one condition embedding by attention or DeepSets. Checked: summary.
+- **Szalai et al.**, *Nucleic Acids Res* 2019 (doi 10.1093/nar/gkz805), [PMC6821211](https://pmc.ncbi.nlm.nih.gov/articles/PMC6821211/):
+  the dominant L1000 signature factor is a viability/proliferation signature; toxicity makes signatures look alike and
+  confounds MoA discovery. Candidate explanation for a low-rank compound potency × line sensitivity component.
+  Checked: summary.

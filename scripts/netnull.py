@@ -194,6 +194,49 @@ def _swap(edges: np.ndarray, seed: int, directed: bool, swaps_per_edge: int = 5)
     return E
 
 
+def _swap2k(edges: np.ndarray, seed: int, directed: bool, swaps_per_edge: int = 5) -> np.ndarray:
+    """Joint-degree-preserving double-edge swaps (2K null). (a-b, c-d) -> (a-d, c-b) only when b and d have the same
+    degree (directed: same in-degree for target swaps, same out-degree for source swaps), so every degree and the
+    number of edges between each pair of degree classes are kept. Endpoint slots of one class only ever exchange
+    nodes of that class, so the per-class slot lists are fixed. Self-loops and duplicates are rejected."""
+    rng = np.random.default_rng(seed)
+    E = edges.copy(); m = len(E); n = int(E.max()) + 1
+    key = (lambda x, y: (x, y)) if directed else (lambda x, y: (min(x, y), max(x, y)))
+    present = set(key(x, y) for x, y in E.tolist())
+    # slot s = 2 * edge + side; class of a slot = the degree that must match there
+    if directed:
+        k_out, k_in = np.bincount(E[:, 0], minlength=n), np.bincount(E[:, 1], minlength=n)
+        cls = np.stack([k_out[E[:, 0]], k_in[E[:, 1]] + n + 1], 1).ravel()     # disjoint source / target classes
+    else:
+        k = np.bincount(E.ravel(), minlength=n)
+        cls = k[E].ravel()
+    order = np.argsort(cls, kind="stable"); sorted_cls = cls[order]
+    start = np.searchsorted(sorted_cls, cls, "left"); size = np.searchsorted(sorted_cls, cls, "right") - start
+    done = tries = 0; target = swaps_per_edge * m
+    while done < target and tries < 20 * target:
+        tries += 1
+        s = int(rng.integers(0, 2 * m))
+        if size[s] < 2:
+            continue
+        t = int(order[start[s] + rng.integers(0, size[s])])
+        i, si = divmod(s, 2); j, sj = divmod(t, 2)
+        if i == j or si != sj and directed:
+            continue
+        b, a = E[i, si], E[i, 1 - si]; d, c = E[j, sj], E[j, 1 - sj]
+        if b == d or a == c or a == d or c == b:
+            continue
+        new_i = (a, d) if si == 1 else (d, a)          # slot si of edge i receives d
+        new_j = (c, b) if sj == 1 else (b, c)
+        e1, e2 = key(*new_i), key(*new_j)
+        if e1 in present or e2 in present:
+            continue
+        present.discard(key(*E[i])); present.discard(key(*E[j])); present.add(e1); present.add(e2)
+        E[i, si] = d; E[j, sj] = b; done += 1
+    if not directed:
+        E = np.sort(E, 1)
+    return E
+
+
 def null(net: Network, kind: str, seed: int = 0) -> Network:
     rng = np.random.default_rng(seed)
     if kind == "real":
@@ -202,6 +245,8 @@ def null(net: Network, kind: str, seed: int = 0) -> Network:
         return Network(f"{net.name}|empty", net.genes, np.zeros((0, 2), int), net.directed)
     if kind == "rewired":
         return Network(f"{net.name}|rewired{seed}", net.genes, _swap(net.edges, seed, net.directed), net.directed)
+    if kind == "rewired2k":
+        return Network(f"{net.name}|rewired2k{seed}", net.genes, _swap2k(net.edges, seed, net.directed), net.directed)
     if kind == "labels":
         perm = rng.permutation(net.n)
         E = perm[net.edges]
