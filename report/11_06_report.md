@@ -476,3 +476,81 @@ Reading (negative results included):
 - **The user's non-inferiority rule** (mean Δ ≥ 0 on both metrics, no interval below zero) holds on LINCS and fails
   on Tahoe at both doses: 0.5 µM full −0.0002; 5 µM resid interval < 0.
 - **Size:** at three decimals the LINCS entries of Table 4 change by +0.001 at most, and Tahoe 5 µM by −0.001.
+
+## 8. Final-run view ablation and compound analysis (Fig. 3, `tab:app-views`, `tab:app-pairs`)
+
+### 8.1 View ablation with the interaction on the final backbone (`scripts/sdst_view_ablation.py`)
+
+- **Jobs:** 359222, 359223, 359337 (fold 2 rerun), 359225, 359226.
+- **Fold 2:** the first run, 359224, failed at `only_morph`. LAPACK `syevd` did not converge on a per-line kernel that
+  has many zero rows. `cache_undetect.eigh_cpu` now retries with scipy `evr`, but only when the default fails, so the
+  other folds are unaffected.
+- **Method:** per view set,
+  - KTA weights over the set's views and leave-one-out transfer terms on the `cache_v1` backbone;
+  - then the interaction, ctx_pc, with c and K chosen on valid PCC_DEG.
+- **Check:** `multi_norm` (all four views) reproduces Table 2 exactly: 0.6499 / 0.1600, and 0.6485 / 0.1551 without
+  the interaction.
+- **Source:** `/nfs-stor/yuqi.lei/Therapeutic/results/sdst_hybrid/views_final/{means.csv, contrasts.csv,
+  summary.json, fold_*/summary.json}`; logs `logs/sdst-views-<job>.out`.
+- **Contrasts:** paired vs all four views (same arm), with a 2,000-replicate bootstrap over test compounds per fold.
+- **Earlier ablation (§5.9 of `10_30_report.md`):** GPU backbone, transfer terms only. It is superseded in the paper.
+
+| views (UnDetect, with interaction) | PCC_DEG | PCC_plate | Δ PCC_plate vs all four | folds < 0 / CI < 0 |
+|---|---|---|---|---|
+| none (backbone) | 0.6372 | 0.1000 | −0.0600 | 5 / 5 |
+| **all four** | **0.6499** | **0.1600** | | |
+| chemistry alone | 0.6441 | 0.1381 | −0.0219 | 5 / 5 |
+| targets alone | 0.6437 | 0.1267 | −0.0334 | 5 / 5 |
+| mechanism alone | 0.6438 | 0.1279 | −0.0322 | 5 / 5 |
+| Cell Painting alone | 0.6430 | 0.1328 | −0.0273 | 5 / 5 |
+| without chemistry | 0.6475 | 0.1469 | −0.0132 | 5 / 5 |
+| without targets | 0.6497 | 0.1602 | +0.0002 | 2 / 0 |
+| without mechanism | 0.6494 | 0.1588 | −0.0012 | 5 / 1 |
+| without Cell Painting | 0.6470 | 0.1455 | −0.0145 | 5 / 5 |
+| chemistry permuted | 0.6460 | 0.1384 | −0.0216 | 5 / 5 |
+| targets permuted | 0.6492 | 0.1590 | −0.0011 | 4 / 2 |
+| mechanism permuted | 0.6489 | 0.1577 | −0.0023 | 5 / 4 |
+| Cell Painting permuted | 0.6470 | 0.1452 | −0.0149 | 5 / 5 |
+
+Reading, against the earlier ablation without the interaction (§5.9 of `10_30_report.md`):
+- **Each view alone:** +0.027 to +0.038 over the backbone, 44–63% of the full +0.060.
+  - Earlier: +0.025 to +0.032.
+  - Chemistry alone gains most from the interaction (0.131 → 0.138).
+- **Chemistry and Cell Painting are not redundant:**
+  - Removing them costs −0.013 / −0.015 (earlier −0.010 / −0.014).
+  - Permuting them costs −0.022 / −0.015 (earlier −0.020 / −0.014).
+  - All intervals are below zero in 5/5 folds.
+- **Targets and mechanism are largely redundant:** dropping or permuting either costs |Δ| ≤ 0.0023. Same picture as
+  before.
+
+### 8.2 Compound analysis on the final run (job 359229; `analyze_sdst_compounds.py --final`)
+
+- **Fused-kernel weights:** the `cache_v1` KTA means, chem 0.290 / tgt 0.245 / moa 0.226 / morph 0.238. Earlier (v3):
+  0.290 / 0.246 / 0.227 / 0.237.
+- **Part A, pair statistics:** no model is involved, so the values are identical to `10_30_report.md` §5.7.
+- **Example pairs:** the 11 pairs of `tab:app-pairs` are in the top list again, with identical Tanimoto, fused and
+  response values (2 d.p.).
+- **Correction to the paper table:** BVD-523–TAK-733 has r = 0.86499, which rounds to 0.86, not 0.87.
+  Triptolide–alvocidib (0.86506) therefore ranks above it. The table is fixed.
+- **Part B:** per-compound PCC_plate gain of the multi-view transfer terms over chemistry (`pool_kta − pool_chem`,
+  `final_cpu`), by nearest-chemical-neighbour bin.
+
+| nearest Tanimoto | compounds | gain, final run | gain, earlier (v3) | UnDetect − backbone, final run |
+|---|---|---|---|---|
+| < 0.3 | 746 | +0.0233 | +0.0230 | +0.0360 |
+| [0.3, 0.5) | 2,349 | +0.0153 | +0.0155 | +0.0303 |
+| [0.5, 0.7) | 2,083 | +0.0058 | +0.0061 | +0.0364 |
+| ≥ 0.7 | 3,039 | +0.0078 | +0.0089 | +0.0770 |
+
+- **By coverage (gain over chemistry):** chem only −0.0026 (4,693 compounds), tgt +0.0086, morph +0.0478, tgt+morph
+  +0.0444.
+- **Source:** `/nfs-stor/yuqi.lei/Therapeutic/results/sdst_hybrid/compound_analysis_final/{summary.json,
+  hop_pairs_top.csv, drug_gain.csv, example_pairs.json}`.
+
+### 8.3 XPert reproduction, fold 0 (job 357100; not blocking)
+
+- **Result:** our retraining with the released code reaches test PCC_DEG **0.6337** on fold 0. The released
+  predictions give 0.6319 (`published`, Table 2 source).
+- **Training:** early stopping after 50 epochs without improvement.
+- **Log:** `logs/dpb-train-357100.out`.
+- **TranSiGen fold 0 (357101):** still running.

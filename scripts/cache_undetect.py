@@ -28,8 +28,15 @@ from run_undetect_v2 import F64, T, fuse, score  # noqa: E402
 
 def eigh_cpu(M: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     """LAPACK eigh, results back on DEV: a cusolver failure poisons the CUDA context (`run_undetect_v2.eigh`), and these
-    kernels are small. Identical to `eigh` on a CPU run."""
-    return tuple(x.to(DEV) for x in torch.linalg.eigh(M.cpu()))
+    kernels are small. Identical to `eigh` on a CPU run. syevd can fail to converge on a kernel with many zero rows
+    (a single sparse view, e.g. Cell Painting alone in one line: job 359224); then scipy's MRRR driver (evr)."""
+    try:
+        return tuple(x.to(DEV) for x in torch.linalg.eigh(M.cpu()))
+    except torch.linalg.LinAlgError:
+        import scipy.linalg
+        print("  eigh: syevd failed, retry with scipy evr", flush=True)
+        w, V = scipy.linalg.eigh(M.cpu().numpy(), driver="evr")
+        return T(w), T(V)
 
 
 def run_fold(f: int, A: dict, Kv: list, Knp: dict, args, views: list = VIEWS, B: np.ndarray | None = None,

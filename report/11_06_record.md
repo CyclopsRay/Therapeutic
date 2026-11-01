@@ -702,3 +702,19 @@ Figures:
   - Left out: `draft/recomb2027/` (superseded draft), `CODEX_review.md` and `RECOMB_requirements.md` (review and
     call text).
   - Not pushed.
+
+### 2026-11-01 20:15 — Fig. 3 inputs regenerated on the final run; paper updated (report §8)
+
+- Fold 2 of the view ablation failed: `syevd` did not converge on the only_morph per-line kernel, which has many zero
+  rows.
+  - Fix: `eigh_cpu` falls back to scipy `evr`, only on failure.
+  - Rerun as 359337; the fallback fired once.
+- Paper changes:
+  - `tab:app-views`: new rows, and the caption now reads "UnDetect with the interaction, backbone of Table 2"; the
+    "earlier run" sentence is removed.
+  - §4.4: 0.027–0.038 alone; 0.013/0.015 removed; 0.022/0.015 permuted; 0.006–0.008 with an analogue.
+  - Fig. 3(a) caption: "UnDetect".
+  - `tab:app-pairs`: the BVD-523/TAK-733 rounding is corrected and the pair order fixed.
+  - Fig. 3 regenerated; dossier v4; BRIEF data note updated.
+- The scientific reading is unchanged: chemistry and Cell Painting carry unique information; targets and mechanism
+  are redundant with each other.
