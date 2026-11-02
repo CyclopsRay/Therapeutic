@@ -1083,3 +1083,39 @@ Submitted 364344 (`slurm/time_undetect_gpu.sbatch`): all five folds on one A100-
 - The stage-2 total is an upper bound, because `--v2` fits all interaction arms on CPU.
 - A first submission with an `nvidia-smi -l` sampler was rejected by the cluster's idle/monitoring filter.
 - Numbers go to the report before the paper.
+
+### 2026-11-03 03:25 — User: §3.5 formula first; title page; Results rewritten with fewer numbers (local, not pushed)
+
+User asked for three changes:
+1. §3.5 was hard to follow: put a formula first, then explain it step by step.
+2. Does the abstract page count towards the 10 pages? If it does, start the introduction right after the abstract.
+3. Rewrite §4 with the press-release principle. Keep only key, intuitive and striking numbers; say "improves" and
+   point to the table for differences in the third decimal.
+
+- **Title page.** The CFP (`RECOMB_requirements.md`) allows "an additional title page containing the paper title,
+  author list, and abstract" on top of 10 pages. The abstract page does not count. If the introduction started on it,
+  the page would no longer be a pure title page and the limit would become 10 pages in total, losing room. The
+  `\clearpage` is kept (agent's recommendation; told to the user).
+- **§3.5.**
+  - Opens with the per-gene ridge objective, eq. `eq:interaction`: ũ is the LOO compound effect, and the penalty
+    κ·s, with s = mean over genes of Σ_i ũ², is applied to all K+1 coefficients, as in `stage2_context.gate_fit`.
+  - Then labelled steps: Role, Context, Closed form, Leave-one-out inputs, Without a per-sample control, Related
+    designs.
+  - The penalty factor is renamed c → κ, because c_d (mean residual) appears in the same paragraph. Changed in Method,
+    Model selection, appendix grids, appendix text (κ = 1 chosen) and the joint-shuffle caption.
+- **§4.** Each paragraph now leads with its claim.
+  - Numbers kept: 0.637 / 0.650 / 0.632; PCC_plate 0.10 → 0.16; no plate-mate 0.536 → 0.574; XPert 0.157 → 0.106
+    when zeroed; end-to-end same features 0.613; ensemble 0.661 / 0.186; DeepCE 0.602 vs 0.491, 79/92, MLP 0.544;
+    Tahoe sparsity +0.015; P1-24 coverage 73% / 91%; Cell Painting +0.05 to +0.09; pair similarity 0.29 vs 0.17;
+    panobinostat–vorinostat r = 0.94; gain without analogue 0.023 vs 0.006–0.008.
+  - Moved to words plus a table or figure reference, with the values kept in `% SRC`: plate-kernel +0.006/+0.001,
+    joint-permutation 0.098, per-bin gains, XPert lead 0.014, TranSiGen values, interaction +0.005/+0.001/+0.003/+0.006,
+    residual-head values, DeepCE bootstrap intervals, resplit ranges, per-setting LINCS/Tahoe gains, view ablation
+    costs, pair bins.
+  - Not in the paper any more: the 0.05 µM sentence (moved to the `tab:xline` caption); the complete-grid negative
+    deviation numbers (−0.005 / −0.002). The text now says that on the complete grid the cross-line gain is
+    shared-across-lines response. The facts stay in report §3.2 and §10.1.
+  - New claim checked: TranSiGen PCC_DEG 0.614 is below the drug-free network (fig2 source CSV), so "both stay below"
+    holds.
+- **Build** (tectonic): no undefined references. The main text ends on p. 11 (= title page + 10). Discussion now
+  starts on p. 9.
