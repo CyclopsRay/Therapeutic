@@ -1001,3 +1001,11 @@ cross-line weight is zero in 86–94% of line × fold cases on the complete grid
   the user's style.py change (chemistry red, Cell Painting green, as Fig. 1), now committed.
 - Build: no undefined references; the main text ends on p. 11 with references starting on that page.
 - Pushed: paper 4d5fd42, Therapeutic 0cf55a6.
+
+### 2026-11-02 06:50 — Figures: Fig. 2 order corrected, DeepCE table to the appendix, joint-shuffle row, appendix figures
+
+User: Fig. 2c/d highest on top (correction); less grey text in Fig. 3; Table 3 to the appendix (Fig. 2d covers it).
+Visualisation ideas discussed; user chose: (1) "all shuffled" row in Fig. 3a; (2)+(3) Tahoe sparsity curve and
+gain-by-coverage as an appendix figure; (4) plate-mate figure in the appendix; all cited from the main text. Generator
+`scripts/figures/fig_appendix.py` (sources: report §10.1, §10.3, §10.6). Main text unchanged in length (ends p. 11,
+line 33 of 52). Pushed: paper a523564 and the commit after it; Therapeutic 71a3044 and the commit after it.

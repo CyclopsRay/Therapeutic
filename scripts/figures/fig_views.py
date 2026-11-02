@@ -1,7 +1,8 @@
 """Figure: what the compound views know that chemistry does not. Dossier: paper/figures/fig_views.md.
 
 (a) View ablation, PCC_plate of UnDetect (transfer terms + interaction) with one view alone, all views without one,
-    and all views with one view's compound labels permuted; lines = drug-free backbone and the full model; dots =
+    and all views with one view's compound labels permuted, and all four views permuted together (one dot per
+    permutation); lines = drug-free backbone and the full model; dots =
     five-fold means.
 (b) Chemically unlike pairs (Morgan Tanimoto < 0.25): response similarity by each view's similarity bin; dashed =
     chemical analogues (Tanimoto >= 0.6). (c) Per test compound: plate-centred gain of the multi-view kernel over the
@@ -29,6 +30,7 @@ from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
 
 RES = Path("/nfs-stor/yuqi.lei/Therapeutic/results/sdst_hybrid/compound_analysis_final")
 ABL = Path("/nfs-stor/yuqi.lei/Therapeutic/results/sdst_hybrid/views_final/means.csv")
+PERMJ = Path("/nfs-stor/yuqi.lei/Therapeutic/results/sdst_hybrid/views_permjoint_summary.csv")
 NGENES = 30
 LABW = 0.50                                 # width of the row labels next to the strips (inches)
 ATOM_C = {"N": "#2a5bd7", "O": "#d43f3a", "S": "#b08800", "F": "#1a9a6c", "Cl": "#1a9a6c", "Br": "#8b3a1a",
@@ -78,10 +80,16 @@ for r_, (k, _) in enumerate(kinds):
     for j, v in enumerate(("chem", "tgt", "moa", "morph")):
         z.scatter(cen[f"pool_{k}_{v}"], 2 - r_ + (j - 1.5) * 0.12, s=16, color=VIEW[v], zorder=3, lw=0)
         rows.append({"panel": "a", "kind": k, "view": v, "pcc_plate": float(cen[f"pool_{k}_{v}"])})
+# all four views shuffled together within view-availability strata (report/11_06_report.md §10.4; 2026-11-02):
+# one dot per permutation seed (five-fold mean)
+PJ = pd.read_csv(PERMJ); PJ = PJ[(PJ.metric == "plate") & (PJ.arm == "undetect") & (PJ.set == "permjoint")]
+for i, (sd, v) in enumerate(PJ.groupby("seed").score.mean().items()):
+    z.scatter(v, -1 + (i - 2) * 0.1, s=16, color=INK2, zorder=3, lw=0)
+    rows.append({"panel": "a", "kind": "permjoint", "view": f"all, seed {sd}", "pcc_plate": float(v)})
 z.axvline(cen["mlp"], color=INK2, ls="--", lw=0.9, zorder=2)
 z.axvline(cen["pool_multi_norm"], color=OURS, lw=1.0, zorder=2)
-z.set_yticks([2, 1, 0], [n for _, n in kinds], fontsize=8)
-z.set_ylim(-0.6, 2.6); z.set_xlim(0.09, 0.165); z.set_xticks([0.10, 0.13, 0.16])
+z.set_yticks([2, 1, 0, -1], [n for _, n in kinds] + ["all shuffled"], fontsize=8)
+z.set_ylim(-1.5, 2.6); z.set_xlim(0.09, 0.165); z.set_xticks([0.10, 0.13, 0.16])
 z.set_xlabel(r"PCC$_\mathrm{plate}$", fontsize=8.5)
 z.grid(axis="x", color=GRID, lw=0.6); z.set_axisbelow(True)
 z.spines["left"].set_visible(False); z.tick_params(axis="y", length=0)
