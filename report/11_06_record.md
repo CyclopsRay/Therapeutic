@@ -980,3 +980,11 @@ GRID_A chosen on the inner-CV residual Pearson. At a = 0 it equals `mkl_D` exact
 with a = 0, and `poolb_D` − `mkl_D` (full, resid) with the ik14 bootstrap. **Reading rule:** the paper may state that
 "under complete training coverage the model finds no stable extra cross-line gain" if on the complete grid a = 0 in
 most cases (> 50%) at both doses and the residual Δ CI includes 0 at both doses.
+
+### 2026-11-02 05:45 — E2b verdict (report §10.8): rule met at 0.5 µM, missed at 5 µM; paper unchanged
+
+Complete grid: a = 0 in 94% / 86% of line × fold cases. The residual Δ vs the per-line model is +0.0001
+[−0.0000, +0.0003] at 0.5 µM and −0.0007 [−0.0014, −0.00003] at 5 µM. By the declared rule the sentence "under complete
+training coverage the model finds no stable extra cross-line gain" is not licensed (5 µM CI excludes 0, by a hair).
+Agent's option for the user: a descriptive sentence without the rule's claim, e.g. "chosen on deviations, the
+cross-line weight is zero in 86–94% of line × fold cases on the complete grid", which is a fact; or leave E2b out.

@@ -737,3 +737,25 @@ of group f−1, from models trained without group f. w grid 0, 0.1, …, 1, chos
   describes the clean rule.
 - `finalize_sdst.py` still implements the next-fold rule. Its outputs are identical.
 
+
+### 10.8 Tahoe: b = 1 fixed, cross-line weight a chosen on residual Pearson (E2b; jobs 361033–361040, arm `poolb_D`)
+
+Same runs and tags as §10.1 (the other arms are reproduced exactly). At a = 0, `poolb_D` equals `mkl_D`. Δ = `poolb_D` −
+`mkl_D`, ik14-group bootstrap; a = 0 counted over line × fold cases.
+
+| lines per training compound | slice | a = 0 | Δ full [CI] | Δ resid [CI] | lines Δ resid > 0 |
+|---|---|---|---|---|---|
+| 50 (complete) | 0.5 µM | 235/250 (94%) | +0.0000 [−0.0000, +0.0001] | +0.0001 [−0.0000, +0.0003] | 2 |
+| 50 (complete) | 5 µM | 216/250 (86%) | −0.0005 [−0.0010, +0.0001] | **−0.0007 [−0.0014, −0.00003]** | 5 |
+| 25 | 0.5 µM | 81/250 | −0.0012 [−0.0029, +0.0005] | +0.0061 [+0.0024, +0.0100] | 40 |
+| 25 | 5 µM | 46/250 | −0.0028 [−0.0067, +0.0014] | +0.0027 [−0.0025, +0.0087] | 35 |
+| 10 | 0.5 µM | 69/250 | −0.0079 [−0.0115, −0.0046] | +0.0160 [+0.0081, +0.0241] | 40 |
+| 10 | 5 µM | 62/250 | −0.0160 [−0.0228, −0.0089] | +0.0126 [+0.0043, +0.0221] | 35 |
+| 5 | 0.5 µM | 85/245 | −0.0177 [−0.0221, −0.0134] | +0.0253 [+0.0166, +0.0343] | 39 |
+| 5 | 5 µM | 63/245 | −0.0243 [−0.0320, −0.0165] | +0.0188 [+0.0078, +0.0299] | 37 |
+
+- Declared rule (complete grid: a = 0 in > 50% of cases and the residual CI includes 0, at both doses): **met at 0.5 µM,
+  missed at 5 µM.** a = 0 in 86% of cases, but the 34 cases with a > 0 lower the residual by 0.0007 (upper bound
+  −0.00003).
+- On sparse grids, a > 0 in 66–75% of cases, and the residual Pearson rises by +0.006 to +0.025 (CI > 0 except k = 25 at
+  5 µM). The full Pearson falls (−0.001 to −0.024) because b = 1 keeps the per-line term at full scale while g is added.
