@@ -134,7 +134,7 @@ for k, e in enumerate(EX):
     c.text(xl + wcol / 2, CH - 0.30, e["class"], fontsize=8.5, ha="center", va="center", color=INK)
     for m in range(2):
         draw_mol(c, e["drawing"][m], xl + m * wcol / 2 + 0.09, 1.10, wcol / 2 - 0.18, 0.90)
-        c.text(xl + m * wcol / 2 + wcol / 4, 0.96, e["pair"][m], fontsize=7, ha="center", va="center", color=INK2)
+        c.text(xl + m * wcol / 2 + wcol / 4, 0.96, e["pair"][m], fontsize=7, ha="center", va="center", color=INK)
     sA, sB = (np.array(s_) for s_ in e["signature"])
     zA, zB = sA / sA.std(), sB / sB.std()
     g = np.argsort(-np.maximum(np.abs(zA), np.abs(zB)))[:NGENES]; g = g[np.argsort(-zA[g])]
@@ -144,20 +144,18 @@ for k, e in enumerate(EX):
         c.imshow(v[None, :], cmap=CMAP, vmin=-1, vmax=1, aspect="auto", interpolation="nearest",
                  extent=(xs, xl + wcol, 0.62 - m * 0.2, 0.78 - m * 0.2), zorder=2)
         c.add_patch(plt.Rectangle((xs, 0.62 - m * 0.2), xl + wcol - xs, 0.16, fc="none", ec=LINE, lw=0.5, zorder=3))
-        c.text(xs - 0.04, 0.70 - m * 0.2, e["pair"][m], fontsize=5.6, ha="right", va="center", color=INK2)
+        c.text(xs - 0.04, 0.70 - m * 0.2, e["pair"][m], fontsize=5.6, ha="right", va="center", color=INK)
         rows += [{"panel": "d", "pair": "–".join(e["pair"]), "compound": e["pair"][m], "gene_rank": i,
                   "gene_index": int(gi), "z_scaled": float(vv)} for i, (gi, vv) in enumerate(zip(g, v))]
     c.text(xl + wcol / 2, 0.24, f"Tanimoto {e['tanimoto']:.2f}   r {e['resp_r']:.2f}", fontsize=7.5, ha="center",
-           va="center", color=INK2)
+           va="center", color=INK)
 # colour key for the strips (2026-11-02, user: the strips were hard to read)
-kx, kw, ky, kh = 4.45, 0.9, 0.035, 0.07
+kx, kw, ky, kh = 2.80, 0.9, 0.035, 0.07   # key only; the strip explanation is in the caption
 c.imshow(np.linspace(-1, 1, 64)[None, :], cmap=CMAP, vmin=-1, vmax=1, aspect="auto", extent=(kx, kx + kw, ky, ky + kh),
          zorder=2)
 c.add_patch(plt.Rectangle((kx, ky), kw, kh, fc="none", ec=LINE, lw=0.5, zorder=3))
-c.text(kx - 0.05, ky + kh / 2, "down", fontsize=6.5, ha="right", va="center", color=INK2)
-c.text(kx + kw + 0.05, ky + kh / 2, "up", fontsize=6.5, ha="left", va="center", color=INK2)
-c.text(0.10, ky + kh / 2, f"Strips: plate-centred response on the {NGENES} strongest genes, same order in both rows",
-       fontsize=6.5, ha="left", va="center", color=INK2)
+c.text(kx - 0.05, ky + kh / 2, "down", fontsize=6.5, ha="right", va="center", color=INK)
+c.text(kx + kw + 0.05, ky + kh / 2, "up", fontsize=6.5, ha="left", va="center", color=INK)
 c.set_xlim(0, 6.5); c.set_ylim(0, CH)
 
 save(fig, "fig_views", sys.argv[1] if len(sys.argv) > 1 else None, table=pd.DataFrame(rows))

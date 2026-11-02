@@ -96,7 +96,7 @@ fig.text(0.475, 1 - TOP + 0.94 * TOP, "b", fontsize=11, fontweight="bold", ha="l
 rows += [{"panel": "b", "group": g, "pcc_deg": v} for g, v in zip(names, vals)]
 
 # (c) plate-centred score: what distinguishes a compound from its plate-mates
-# 2026-11-02 user: plate-response baseline (0 by construction) dropped, rows sorted increasing from top to bottom,
+# 2026-11-02 user: plate-response baseline (0 by construction) dropped, rows sorted, highest on top,
 # axis from 0.05; dots instead of bars because the axis no longer starts at zero; ensemble added.
 arms = [("mlp", "Drug-free MLP", CTX), ("pool_plate", "Plate kernel", MUTED),
         ("transigen_zero", "TranSiGen, drug zeroed", "white"), ("transigen", "TranSiGen", INK2),
@@ -104,7 +104,7 @@ arms = [("mlp", "Drug-free MLP", CTX), ("pool_plate", "Plate kernel", MUTED),
         ("pool_chem", "Chemistry kernel", VIEW["chem"]), ("ctx_pc", "UnDetect", OURS),
         ("ctx_pc+xpert", "UnDetect + XPert", OURS)]
 arms.sort(key=lambda t: cen[cen.arm == t[0]].centred_shared.mean())
-yc = np.arange(len(arms))[::-1]
+yc = np.arange(len(arms))                # highest on top (user, 2026-11-02 correction)
 for k, (arm, name, col) in zip(yc, arms):
     f = cen[cen.arm == arm].centred_shared.to_numpy()
     c.scatter(f, np.full(len(f), k), s=5, color=MUTED, zorder=2, lw=0)
@@ -126,7 +126,7 @@ xk = json.loads((DCE / "xline_kernel/deepce_split/summary.json").read_text())["a
 mm = json.loads((DCE / "mlp_multimodal/summary.json").read_text())
 rep = np.mean([np.load(DCE / f"ppi_seed{s}/test_pred_bestdev.npz")["per_sig_pearson"] for s in range(3)], 0).mean()
 # 2026-11-02 user: no reported / reproduced labels; models we ran show our value (DeepCE = our reproduction), the
-# others the value of Pham et al. (flag kept in the source table only); rows increase from top to bottom.
+# others the value of Pham et al. (flag kept in the source table only); highest on top.
 D = [("Mean per line and dose", bl["mean_cell_dose"]["pearson"], MUTED, False),
      ("$k$NN", 0.3903, INK2, True), ("Neural network", 0.3929, INK2, True),
      ("DeepCE without attention", 0.4418, INK2, True),
@@ -136,7 +136,7 @@ D = [("Mean per line and dose", bl["mean_cell_dose"]["pearson"], MUTED, False),
      ("UnDetect, chem. + targets + MOA", xk["krr_chem_kn_norm_xline"]["test"], OURS, False),
      ("UnDetect, all views", xk["krr_multi_norm_xline"]["test"], OURS, False)]
 D.sort(key=lambda t: t[1])
-yd = np.arange(len(D))[::-1]
+yd = np.arange(len(D))                   # highest on top
 for k, (name, v, col, reported) in zip(yd, D):
     d.scatter(v, k, s=32, zorder=3, color=col, edgecolor=col, lw=1.1)
     d.text(v + 0.006, k, f"{v:.3f}", ha="left", va="center", fontsize=7.5, color=INK)
