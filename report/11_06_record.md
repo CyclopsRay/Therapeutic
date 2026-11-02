@@ -1009,3 +1009,77 @@ Visualisation ideas discussed; user chose: (1) "all shuffled" row in Fig. 3a; (2
 gain-by-coverage as an appendix figure; (4) plate-mate figure in the appendix; all cited from the main text. Generator
 `scripts/figures/fig_appendix.py` (sources: report §10.1, §10.3, §10.6). Main text unchanged in length (ends p. 11,
 line 33 of 52). Pushed: paper a523564 and the commit after it; Therapeutic 71a3044 and the commit after it.
+
+### 2026-11-03 02:30 — Review of the user's hand edits (paper 166bc5d); agreed fixes applied locally, not pushed
+
+User pushed wording changes, TODOs and margin comments (166bc5d) and asked for a justification of each. The agent's
+item-by-item review (2026-11-02 evening) was accepted ("可以"). Applied in `paper/` (uncommitted, awaiting the user's
+diff review):
+
+- **Intro.** Grammar fixes kept ("Existing", serial comma, "taken into account"). Reverted or rewritten:
+  - "The need for a model…": a need does not turn atlases into a screen.
+  - "Upon that … also provides": now "We show that … can supply", an assertion that Results support.
+  - "Using that information, Bai et al. retrained…": factually wrong, since Bai et al. used no such views. Topic
+    sentence restored.
+  - "However, if we predict…": no contrast, and the name "plate-response baseline" must be introduced here.
+  - "For a first approximation" → "To".
+  - **"only one model XPert can learn the compound": contradicts Results.** TranSiGen's PCC_plate drops from 0.144 to
+    0.101 when zeroed. Now "the strongest published model, XPert, does learn the compound".
+- **Fig. 1 caption.**
+  - Restored "(hatched where a view is missing)": vorinostat has no Cell Painting profile
+    (`fig1_pipeline_source.json`).
+  - The kernel sentence had typos and a "which" that attached to daunorubicin; it was rewritten with the reason
+    (shared target and MoA) restored.
+  - The backbone predicts the compound-independent response (the edit had said "the compound response"), and the
+    residual definition is restored (the next sentence refers to "these residuals").
+  - The in-caption "TODO" (plain text, invisible to the drafting-macro grep) is replaced by "DMSO (vehicle)". DMSO is
+    now also defined in §2.1.
+- **§2.**
+  - Dose settings stated: drug-blind and LINCS one dose and time (10 µM, 24 h); Tahoe per dose; only DeepCE resolves
+    doses in one model.
+  - Heading typo fixed.
+  - The commented-out drug-free-network sentence is restored and reworded. It is the main-text support for the intro's
+    "to a first approximation" claim.
+  - Name kept as **plate-centred** ("agnostic" would say the metric ignores the plate; it subtracts it).
+- **Fig. 2 caption.**
+  - A mid-line `%` had deleted the attribution "models we did not run from Pham et al." and "the MLP is given the same
+    compound views"; both are restored.
+  - Panel (c) legend (large/small dots) restored; "replaced by zeros" kept.
+  - The undefined "compound lane" is now "drug-free backbone"; the header now says (d) is one published split.
+  - Fold dots for (a) and (b) are added to Hanzhe's todo and `figures/BRIEF.md`.
+- **Level-5 paragraph (user: evidence?).**
+  - "Removes *most* plate structure" was unquantified; it is now "remove the shared plate response before modelling".
+  - The old text called Tahoe "Level-5"; it is now the per-plate DMSO subtraction.
+  - The plate-map split now carries a SRC (10_09_record 2026-10-03 21:10; 10_30_report §4.1, §4.4).
+- **§3.**
+  - **"b fixed to 1" (user): not so in UnDetect.** `cache_undetect.py` searches (g, h) over SCALES², and g = h = 0.5 was
+    chosen in all five folds (`cache_v1/fold_*/summary.json`). b = 1 was E2b (`poolb_D`, Tahoe; record 2026-11-02
+    05:20), which is not in the paper.
+  - The question exposed a **wrong Model-selection sentence**: "λ, a, b, c ∈ {10⁻³ … ∞}". The real grids are in the new
+    appendix Table `tab:app-grids` (drug-blind LAMS/SCALES/CS/KS; LINCS/Tahoe GRID_LAMBDA/GRID_A/GRID_B/GATE_CS with
+    inner CV; DeepCE LAMS/RHOS/SIGMAS).
+  - Stage-separation sentence: the cross-reference to §2 was wrong (joint training is shown in §4). Rewritten; the
+    user's "reason and novelty" phrasing was not adopted.
+  - Backbone optimiser details moved to the new appendix §`app:impl`. The training-compounds-only, early-stop-on-
+    validation and frozen facts stay in the main text.
+  - Zero-filling sentence kept, with a reference to Prop. 1.
+  - "In a sense … should inform" reverted to "so … informs", a consequence of the equation.
+  - Dose variable s and σ are now defined.
+  - Interaction subsection reordered: what the model is, then fitting/LOO, then related designs last. The Molina
+    genetic-screen sentence is dropped (still cited in the intro). Hodos and Rhaister are kept.
+- **§4.** "Chemistry gives about half of the gain (+0.006 of +0.011)" is removed. The table row and the views section
+  carry it.
+- **Build** (tectonic, scratch copy): no undefined references. The main text ends on p. 10 and Fig. 3 floats to p. 11
+  (before: text ends on p. 11). Overleaf/pdfLaTeX placement still to be checked. `sync_captions.py` refreshed the
+  fig1, fig2 and fig_views dossiers.
+
+**Wall time (user: "now computable").** Existing numbers are not usable as they stand:
+- `cache_v1` ran on CPU (46–63 min per fold, backbone and kernel stages lumped together).
+- XPert fold 0 (job 357100) took 268.2 min on A100-SXM4-40GB (gpu-52), early stop at epoch 145.
+- Backbone parameters, 978→2048×3→978: 14.40M, against XPert's 5.60M.
+
+Submitted 364344 (`slurm/time_undetect_gpu.sbatch`): all five folds on one A100-SXM4-40GB, tag `timing_gpu`.
+- Logged: backbone time, fold totals, stage-2 total, peak GPU allocation and host RSS.
+- The stage-2 total is an upper bound, because `--v2` fits all interaction arms on CPU.
+- A first submission with an `nvidia-smi -l` sampler was rejected by the cluster's idle/monitoring filter.
+- Numbers go to the report before the paper.
