@@ -554,3 +554,186 @@ Reading, against the earlier ablation without the interaction (§5.9 of `10_30_r
 - **Training:** early stopping after 50 epochs without improvement.
 - **Log:** `logs/dpb-train-357100.out`.
 - **TranSiGen fold 0 (357101):** still running.
+
+## 9. Fig. 1 example compounds: view kernels (no training; `scripts/figures/fig1_cards_data.py`)
+
+Daunorubicin (BRD-A37630846, the entry with the most samples; 42 lines), mitoxantrone (BRD-K21680192) and vorinostat
+(BRD-K81418486) in the drug-blind benchmark. Kernels as in UnDetect (`run_sdst_hybrid.drug_kernels`); fusion weights =
+mean of the five `cache_v1` fold KTA weights (chem 0.290, targets 0.245, MoA 0.226, Cell Painting 0.238).
+Source: `paper/figures/fig1_pipeline_source.{csv,json}`.
+
+| pair | Morgan Tanimoto | targets | MoA | Cell Painting | fused + normalised |
+|---|---|---|---|---|---|
+| daunorubicin – mitoxantrone | 0.112 | 1 (TOP2A) | 0.5 | 0.151 | 0.427 |
+| daunorubicin – vorinostat | 0.080 | 0 | 0 | — (vorinostat has no profile) | 0.026 |
+| mitoxantrone – vorinostat | 0.137 | 0 | 0 | — | 0.046 |
+
+- By chemical structure alone, mitoxantrone is closer to vorinostat (0.137) than to daunorubicin (0.112). Targets,
+  MoA and Cell Painting all pair it with daunorubicin. The fused kernel ranks daunorubicin first (0.427 vs 0.046).
+- Vorinostat's fused self-similarity before normalisation is 0.762 (missing Cell Painting); normalisation sets it to 1.
+
+## 10. Tahoe sparsity, residual-selected cross-line weights, PCC_plate permutation null, cross-fitted interaction, gain by coverage (2026-11-02; plans in `11_06_record.md` 2026-11-02 03:40)
+
+### 10.1 Tahoe: cross-line term vs coverage of the training grid (E1; jobs 360817–360824)
+
+`run_l1000_xline.py --source Tahoe --kernels T1 D [--keep-lines k] --tag {_r, _keep5, _keep10, _keep25}`, ik14 split,
+seed 0. With `--keep-lines k` every training compound keeps its rows in k random lines out of 50 (fixed per compound;
+seed 0); test compounds keep all lines, so the test rows are those of the complete-grid runs. `_r` = complete grid
+(k = 50); its `mkl_D` and `pool_D` reproduce `_Dw` exactly (max |diff| 0 at both doses). Analysis:
+`analyze_xline_weights.py --slices T-0.5 T-5 --tag <tag> --ref mkl_D` → `results/l1000_xline/weights_vs_D<tag>.json`.
+Δ = `pool_D` − `mkl_D` (cross-line term added to the per-line multi-view kernel), line-macro, ACTIVE rows, 2,000-replicate
+bootstrap over ik14 groups; lines with Δ > 0 of 50. `resid` = Pearson of prediction and truth both minus the training
+line mean.
+
+| lines per training compound | slice | Δ full | Δ resid [95% CI] | lines Δ resid > 0 | `mkl_D` resid |
+|---|---|---|---|---|---|
+| 5 | 0.5 µM | +0.0067 | **+0.0147 [+0.0035, +0.0261]** | 34 | 0.0783 |
+| 5 | 5 µM | +0.0064 | **+0.0149 [+0.0027, +0.0274]** | 34 | 0.0616 |
+| 10 | 0.5 µM | +0.0053 | +0.0164 [+0.0068, +0.0266] | 35 | 0.1092 |
+| 10 | 5 µM | +0.0064 | +0.0077 [−0.0013, +0.0177] | 35 | 0.0862 |
+| 25 | 0.5 µM | +0.0061 | +0.0030 [−0.0031, +0.0094] | 34 | 0.1613 |
+| 25 | 5 µM | +0.0057 | +0.0007 [−0.0046, +0.0064] | 30 | 0.1408 |
+| 50 (complete) | 0.5 µM | +0.0066 | −0.0050 [−0.0076, −0.0024] | 6 | 0.2016 |
+| 50 (complete) | 5 µM | +0.0060 | −0.0022 [−0.0038, −0.0007] | 14 | 0.1832 |
+
+- Declared rule (k = 5 residual CI above 0 at both doses, and above the k = 50 value at both): **met.**
+- The full-Pearson gain is about the same at every k (+0.005 to +0.007). The residual gain falls with coverage, from
+  +0.015 at k = 5 to below zero on the complete grid.
+
+### 10.2 Tahoe: cross-line weights chosen on residual Pearson (E2, arm `poolr_D`, same jobs)
+
+Δ = `poolr_D` − `mkl_D`, same bootstrap.
+
+| lines | slice | Δ full | Δ resid [95% CI] |
+|---|---|---|---|
+| 50 (complete) | 0.5 µM | −0.0028 [−0.0092, +0.0038] | +0.0001 [−0.0000, +0.0003] |
+| 50 (complete) | 5 µM | −0.0069 [−0.0161, +0.0022] | −0.0008 [−0.0015, −0.0000] |
+| 25 | 0.5 / 5 µM | | +0.0061 [+0.0024, +0.0100] / +0.0024 [−0.0028, +0.0084] |
+| 10 | 0.5 / 5 µM | | +0.0150 [+0.0074, +0.0230] / +0.0110 [+0.0027, +0.0205] |
+| 5 | 0.5 / 5 µM | | +0.0221 [+0.0132, +0.0308] / +0.0163 [+0.0053, +0.0274] |
+
+Chosen (a, b) on the complete grid (250 line × fold cases): `poolr_D` a = 0 (no cross-line term) in 235 at 0.5 µM and
+216 at 5 µM; `pool_D` a > 0 in 142 and 55.
+
+- Declared rule (complete grid: residual CI includes or exceeds 0 at both doses): **met at 0.5 µM, missed at 5 µM** by
+  a hair (upper bound −0.00005). The residual drop of `pool_D` is mostly, not entirely, due to choosing (a, b) on the
+  full Pearson.
+- Selected on residuals, the complete-grid model switches the cross-line term off in most lines. It transfers no
+  line-specific compound signal there.
+- The full-Pearson cost of `poolr_D` is partly an artefact. Residual Pearson does not change when the compound term is
+  rescaled. With a = 0 every b > 0 scores the same, so the grid's first value b = 0.25 is chosen, which shrinks the
+  per-line term (175–199 of 250 cases are (0, 0.25)). Only the ratio a/b is identified by this criterion.
+- With sparse lines, `poolr_D` has the higher residual point estimate than `pool_D` in five of six (k, dose) cases (not
+  k = 10 at 0.5 µM). This is not tested.
+
+### 10.3 Drug-blind benchmark: gain by the test compound's view coverage (E5; `scripts/analyze_sdst_coverage.py`, no training)
+
+Arms from `final_cpu`. Strata: pharmacology = targets/MoA present (identical coverage, 2,957 compounds); Cell
+Painting 1,937. Row means pooled over the five folds; 2,000-replicate bootstrap over test compounds. The "all" row
+reproduces Table 2 (0.6499 / 0.1600). Source: `results/sdst_hybrid/coverage_final/{strata.csv, summary.json}`.
+
+PCC_plate (rows with a training plate-mate):
+
+| stratum | compounds | backbone | chem transfer | multi-view transfer | UnDetect | XPert | UnDetect − backbone [CI] | multi − chem [CI] | UnDetect − XPert [CI] | blend − XPert [CI] |
+|---|---|---|---|---|---|---|---|---|---|---|
+| structure only | 4,693 | 0.0903 | 0.1169 | 0.1126 | 0.1157 | 0.1291 | +0.0254 [+0.0211, +0.0298] | −0.0043 [−0.0053, −0.0033] | −0.0134 [−0.0176, −0.0093] | +0.0153 [+0.0136, +0.0170] |
+| pharmacology only | 1,591 | 0.0912 | 0.1282 | 0.1427 | 0.1464 | 0.1499 | +0.0552 [+0.0407, +0.0718] | +0.0145 [+0.0089, +0.0205] | −0.0035 [−0.0138, +0.0078] | +0.0249 [+0.0201, +0.0299] |
+| Cell Painting only | 578 | 0.1198 | 0.1471 | 0.2002 | 0.2086 | 0.1722 | +0.0888 [+0.0732, +0.1053] | +0.0531 [+0.0432, +0.0638] | +0.0364 [+0.0192, +0.0553] | +0.0504 [+0.0412, +0.0616] |
+| both | 1,355 | 0.1136 | 0.1523 | 0.2074 | 0.2149 | 0.1946 | +0.1014 [+0.0848, +0.1181] | +0.0551 [+0.0465, +0.0641] | +0.0203 [+0.0094, +0.0318] | +0.0441 [+0.0372, +0.0516] |
+| all | 8,217 | 0.0999 | 0.1325 | 0.1550 | 0.1600 | 0.1568 | +0.0601 | +0.0225 | +0.0032 [−0.0013, +0.0081] | +0.0291 |
+
+PCC_DEG (all rows), UnDetect − backbone: structure only +0.0024 [+0.0014, +0.0034]; pharmacology only +0.0140; Cell
+Painting only +0.0165; both +0.0229. UnDetect − XPert: +0.0115 / +0.0192 / +0.0310 / +0.0222 (all CI > 0).
+
+- Structure-only compounds are 57% of compounds (4,740 of 8,276) and 37% of rows. Their gain is the smallest and comes
+  entirely from chemistry. The multi-view kernel is **slightly below** the chemistry-only kernel for them (−0.0043, CI
+  < 0), and XPert is **ahead** of UnDetect on PCC_plate (−0.0134, CI < 0).
+- With Cell Painting, UnDetect gains +0.089 to +0.101 and leads XPert by +0.020 to +0.036 (CI > 0).
+- The UnDetect + XPert blend is above XPert in every stratum, on both metrics.
+
+### 10.4 Joint compound-label permutation null for PCC_plate (E3; jobs 360832–360836, `sdst_view_ablation.py --sets multi_norm permjoint --perm-seed 0..4`)
+
+All four views get one permutation of compound labels, drawn within compounds that have the same views. Rows, plates,
+lines, backbone (`cache_v1`) and view coverage are kept. KTA weights, transfer terms and interaction are refitted. Five
+permutation seeds × five folds. Summary: `scripts/analyze_permjoint.py` →
+`results/sdst_hybrid/views_permjoint_summary.{csv,json}`. The `multi_norm` arm in each job reproduces `views_final`
+(0.6499 / 0.1600). Gain = paired difference to the backbone, 2,000-replicate bootstrap over test compounds.
+
+| | PCC_DEG | gain (min, max over 25 runs) | PCC_plate | gain (min, max) | runs with gain CI > 0 / < 0 (PCC_plate) |
+|---|---|---|---|---|---|
+| UnDetect, real compounds (one run per fold, repeated identically in each seed's job) | 0.6499 | +0.0127 (+0.0100, +0.0141) | 0.1600 | +0.0600 (+0.0519, +0.0688) | 5 / 0 folds |
+| UnDetect, permuted | 0.6374 | +0.0002 (+0.0001, +0.0002) | 0.0984 | −0.0016 (−0.0028, −0.0004) | 0 / 25 |
+| transfer terms, permuted | 0.6374 | +0.0001 | 0.0985 | −0.0015 (−0.0028, −0.0004) | 0 / 25 |
+
+- Declared rule (every permuted run below the real gain in every fold): **met**, on both metrics and both arms.
+- With compound identity broken, the pipeline falls to the backbone. On PCC_plate it is slightly below it (−0.0016, CI < 0
+  in all 25 runs). The validation-chosen interaction does not rescue it: c = ∞ (switched off) in 12 of 25 runs, c = 10 (the
+  strongest shrinkage tried below ∞) in the other 13.
+- Permuted UnDetect's PCC_plate ranges 0.092–0.109 across folds and seeds; backbone mean 0.100.
+
+### 10.5 Interaction on fully cross-fitted training inputs (E4; jobs 360837–360841, `sdst_crossfit_interaction.py`)
+
+Training-row G and H are replaced by 5-fold cross-fitted values over the fold's training compounds. In `xfit` the KTA
+weights and the fused kernel are refitted per part; in `xfit_fixw` the weights are fixed. λ and (g, h) come from the cache,
+and valid/test terms are unchanged. Summary: `--summarize` → `results/sdst_hybrid/xfit_interaction/{contrasts.csv,
+summary.json}`. Interaction gain = UnDetect − transfer terms, PCC_plate, bootstrap over test compounds.
+
+| fold | leave-one-out (paper) | cross-fitted, weights refitted | cross-fitted, weights fixed |
+|---|---|---|---|
+| 0 | +0.0055 [+0.0036, +0.0076] | +0.0055 [+0.0036, +0.0076] | +0.0055 |
+| 1 | +0.0059 [+0.0042, +0.0078] | +0.0060 [+0.0042, +0.0077] | +0.0059 |
+| 2 | +0.0049 [+0.0039, +0.0060] | +0.0050 [+0.0039, +0.0061] | +0.0050 |
+| 3 | +0.0039 [+0.0019, +0.0057] | +0.0039 [+0.0019, +0.0058] | +0.0039 |
+| 4 | +0.0047 [+0.0033, +0.0061] | +0.0047 [+0.0033, +0.0061] | +0.0047 |
+| mean | +0.0050 (5/5 CI > 0) | +0.0050 (5/5 CI > 0) | +0.0050 (5/5 CI > 0) |
+
+UnDetect five-fold means: leave-one-out 0.6499 / 0.1600 (reproduces Table 2); cross-fitted 0.6498 / 0.1601.
+
+- Declared rule (cross-fitted gain > 0 with CI > 0 in ≥ 4/5 folds): **met** (5/5).
+- The per-part KTA weights stay close to the full-fold weights (Cell Painting 0.19–0.26 vs 0.22–0.25). Cross-fitted
+  training G correlates 0.93 with leave-one-out G. The validation choice (c, K) is identical in every fold and arm.
+- The backbone B is still in-sample on training rows. Not addressed.
+
+### 10.6 PCC_plate by the number of training plate-mates (diagnostic, not declared in advance; `scripts/analyze_plate_mate_count.py`, no training)
+
+Plate-mates = training samples sharing the test sample's control row; m_i is their mean. Arms from `final_cpu`; rows
+pooled over five folds; 2,000-replicate bootstrap over test compounds. Source:
+`results/sdst_hybrid/plate_mate_count/{bins.csv, contrasts.csv, summary.json}`. The overall means reproduce Table 2
+(backbone 0.0999, UnDetect 0.1600, XPert 0.1568).
+
+| plate-mates | rows (share) | backbone | UnDetect | XPert | UnDetect − backbone [CI] | UnDetect − XPert [CI] | XPert − backbone [CI] |
+|---|---|---|---|---|---|---|---|
+| 1–2 | 3,731 (5.3%) | 0.5360 | 0.5591 | 0.5751 | +0.0232 [+0.0189, +0.0279] | −0.0159 [−0.0208, −0.0110] | +0.0391 [+0.0331, +0.0457] |
+| 3–5 | 3,650 (5.1%) | 0.3039 | 0.3301 | 0.3696 | +0.0263 [+0.0220, +0.0307] | −0.0395 [−0.0449, −0.0338] | +0.0657 [+0.0596, +0.0720] |
+| 6–10 | 4,988 (7.0%) | 0.1807 | 0.2205 | 0.2498 | +0.0399 [+0.0353, +0.0445] | −0.0293 [−0.0345, −0.0240] | +0.0691 [+0.0639, +0.0742] |
+| 11–20 | 8,558 (12.1%) | 0.1071 | 0.1641 | 0.1771 | +0.0570 [+0.0519, +0.0623] | −0.0130 [−0.0184, −0.0074] | +0.0700 [+0.0644, +0.0754] |
+| 21–50 | 16,298 (23.0%) | 0.0613 | 0.1484 | 0.1290 | +0.0871 [+0.0753, +0.1000] | +0.0194 [+0.0104, +0.0289] | +0.0677 [+0.0585, +0.0775] |
+| > 50 | 33,740 (47.5%) | 0.0345 | 0.0931 | 0.0821 | +0.0586 [+0.0505, +0.0675] | +0.0110 [+0.0052, +0.0173] | +0.0476 [+0.0412, +0.0549] |
+| ≤ 20 | 20,927 | | | | +0.0415 [+0.0380, +0.0450] | −0.0220 [−0.0258, −0.0182] | +0.0635 [+0.0597, +0.0674] |
+| > 20 | 50,038 | | | | +0.0679 [+0.0595, +0.0766] | +0.0138 [+0.0076, +0.0201] | +0.0541 [+0.0475, +0.0615] |
+
+- The drug-free backbone's PCC_plate falls from 0.536 to 0.035 as m_i rests on more plate-mates. Most of its overall
+  0.100 is error in m_i shared by truth and prediction.
+- UnDetect's gain over the backbone is positive in every bin (CI > 0).
+- UnDetect − XPert changes sign with plate size: negative in each bin ≤ 20, positive in each bin > 20. The 20 split was
+  chosen after seeing the bins. Why XPert gains most where m_i is noisy is not established.
+
+### 10.7 Ensemble weight chosen without the target fold's labels (`scripts/blend_clean_weight.py`, no training)
+
+Question from the external reviewer: does the UnDetect + XPert weight avoid the target test fold's responses?
+`finalize_sdst.py` picks w for fold f on fold (f+1)'s test rows, i.e. on labels of group f+1, which are fold f's
+validation compounds. Those predictions come from fold (f+1)'s models, which were trained on groups that include group
+f. Fold f's labels can therefore reach w indirectly. Clean alternative: w from fold (f−1)'s test rows; those are labels
+of group f−1, from models trained without group f. w grid 0, 0.1, …, 1, chosen by PCC_DEG. Source:
+`results/sdst_hybrid/blend_clean/summary.json`.
+
+| rule | w per fold | PCC_DEG | PCC_plate | vs XPert (DEG / plate) | vs UnDetect (DEG / plate) | folds CI > 0 |
+|---|---|---|---|---|---|---|
+| next fold (paper so far) | 0.4 ×5 | 0.6605 | 0.1860 | +0.0290 / +0.0291 | +0.0106 / +0.0259 | 5/5 on all four |
+| previous fold (clean) | 0.4 ×5 | 0.6605 | 0.1860 | +0.0290 / +0.0291 | +0.0106 / +0.0259 | 5/5 on all four |
+| fixed 0.5 | 0.5 ×5 | 0.6595 | 0.1837 | +0.0280 / +0.0267 | +0.0096 / +0.0236 | 5/5 on all four |
+
+- The clean rule selects the same weight in every fold, so the reported ensemble numbers are unchanged. The paper now
+  describes the clean rule.
+- `finalize_sdst.py` still implements the next-fold rule. Its outputs are identical.
+

@@ -718,3 +718,252 @@ Figures:
   - Fig. 3 regenerated; dossier v4; BRIEF data note updated.
 - The scientific reading is unchanged: chemistry and Cell Painting carry unique information; targets and mechanism
   are redundant with each other.
+
+### 2026-11-01 22:20 — Reference check; benchmarked models and interaction-technique papers cited (paper, not committed)
+
+- User: check the references and where they are cited. Include every benchmarked tool and the papers on cell × gene
+  (compound × context) interaction techniques.
+- Before: 9 references cited in the body. 17 bib entries were marked VERIFY. Five of the seven models in Bai et al.'s
+  benchmark were never cited (CIGER, MultiDCP, PRnet, PertDiT, TranSiGen), and neither were STRING, the rewiring null,
+  fingerprints, annotation sources or Cell Painting.
+- Check: every entry was compared with its Crossref record (DOI) or with arXiv (chemCPA, arXiv-only items). Model papers
+  are from `repro/dpb/upstream/reference/PROVENANCE.md`; drug encoders were read from the benchmark's model code.
+  Corrections to earlier bib data:
+  - Systema is *Nat Biotechnol* 44(6):1050–1059 (2026).
+  - XPert: Guo et al., 8(1):96–112.
+  - MAP: 8(9):1478–1491.
+  - Bai et al. has three authors (Bai, Prince, Nitschke).
+  - "Is graph-based feature selection of genes better than random?" has Hashir as first author, not Bertin.
+  - PDGrapher: 10(5):1008–1025.
+- Placement (35 references now in the bibliography):
+  - Intro: the drug-encoder sentence cites all seven models plus chemCPA and MAP, grouped by encoder type. The Bai
+    sentence names the seven and adds Ahlmann-Eltze 2025 and Wong 2025 (simple baselines in genetic perturbation).
+  - §2: the L1000 row of the benchmarks table.
+  - §3.3: Morgan/ECFP; Repurposing Hub and Tahoe metadata for the annotations; Cell Painting (Bray 2016, Way 2022).
+  - §3.4: pairwise and multitask kernels: Gönen & Margolin, Costello, pairwiseMKL, Stock 2018.
+  - §3.5: Molina & Zhang (perturbation × line interaction). Context–compound couplings: TranSiGen/PRnet
+    concatenation, XPert cross-attention, CPA/chemCPA decoder, Hodos tensor completion, Rhaister-O gene-wise control
+    slopes. Varying-coefficient models (Hastie & Tibshirani) and FiLM for the gene-wise rescaling.
+  - §4.4: STRING, Maslov–Sneppen rewiring, network priors (DeepCE, GEARS, GSNN, XPert).
+  - Discussion: unseen cell lines (Rhaister-O, Molina & Zhang).
+  - Appendix `tab:app-zero`: one citation per model row.
+- Page budget, from a local tectonic build with relaxed float parameters so that the figures sit in the text: the
+  conclusion moved from the bottom of PDF page 10 to line ~6 of page 11. That is within the limit (page 11). With the
+  default float parameters, Figs. 2–3 still float after the references; check on Overleaf.
+
+**2026-11-02 00:40 — Fig. 1 redesign: compound cards (user sketch).** 用户手绘了新版 Fig. 1，要求以三张化合物卡片为主视觉。
+- User design: three cards (daunorubicin, mitoxantrone, vorinostat), one row per view. Each view kernel shown concretely
+  over the three compounds. Fusion and normalization drawn as one step. Kernel transfer split into shared and per line.
+  Mark what comes from DMSO and how the residual is formed. Draw the parts first, then assemble.
+- Calibration against the code (agent), to be built into the new figure:
+  - residual = (treated − DMSO) − backbone(DMSO), on profiled compounds only (`cache_undetect.py`: `R = Y − B`, `Y` =
+    delta). The sketch's "treated ⊖ predicted Δ" omits the DMSO subtraction.
+  - The interaction's context z = leading PCs of the control expression (`stage2_context.py` L79–81), not the
+    backbone output. The sketch's DMSO → "context interaction" line is right; the current Fig. 1 (v4) draws the ×
+    input from the backbone output, which is wrong.
+  - The final sum adds the backbone output (context) of the query sample; the sketch has no such arrow.
+- Real values for the three compounds (`drugs.tsv`, Cell Painting npz; mean KTA weights over the five `cache_v1`
+  folds: chem 0.290, tgt 0.245, moa 0.226, morph 0.238). Morgan Tanimoto: dau–mito 0.112, dau–vor 0.080, mito–vor
+  0.137 (chemistry alone puts mitoxantrone nearer vorinostat). Targets: dau–mito 1 (TOP2A). MoA: dau–mito 0.5.
+  Cell Painting cosine: dau–mito 0.151; vorinostat has no profile. Normalised fused kernel: dau–mito 0.427, dau–vor
+  0.026, mito–vor 0.046. Daunorubicin entry = BRD-A37630846 (most samples, 42 lines; four other BRD entries exist).
+  Proposed roles: mitoxantrone = unprofiled query, the other two profiled (illustrative; in the real folds they are in
+  groups 1 / 0 / 2).
+- 01:30 draft v5 rendered (parts + assembly), not yet in the paper. Generators `scripts/figures/fig1_cards_data.py`
+  (deepce-gpu env: kernels, weights, 2D structures → `fig1_cards_source.{json,csv}`) and `scripts/figures/fig1_cards.py`
+  (gnn-gpu env; `--parts` writes each part separately). Draft outputs in the session scratchpad (`fig1v5/`).
+  Layout: cards → 2×2 view kernels (real values) → fusion + normalization (real mean KTA weights as a stacked bar;
+  query row highlighted) → kernel transfer drawn as the query's similarity weights on the profiled residuals, shared
+  (all lines) and per line (line ℓ) → + → compound effect → × interaction (control PCs from DMSO) → + context →
+  response. Dashed region marks the profiled-compound path (treated − DMSO = measured Δ; − context = residual).
+  Kept the project view palette (green/gold/pink/violet), not the sketch's red/yellow/pink/blue, because blue = UnDetect
+  and Figs 2–3 share the palette. Simplification to state in the caption: the transfer weights shown are K̃ entries;
+  the model applies (K̃_DD + λI)⁻¹ (λ = 3 in all five folds). Pending user approval before replacing
+  `fig1_pipeline_preview.*`, the caption and the dossier (whose "no numbers" rule changes: kernel values are now data).
+- 02:30 v6 after user review (same generators; outputs in scratchpad `fig1v6/`). User asks, all done: profiled
+  cards (D, V) then an ellipsis card slot, query M at the bottom; kernels as one front matrix (structure) with the
+  other three views stacked behind; no numbers anywhere (shading only); ellipsis row/column in every matrix, M last so
+  the fused kernel's bottom row goes straight down into kernel transfer; the four weight bars removed from fusion
+  (user asked why they were there: they were the mean KTA view weights, 0.23–0.29, and needed explanation); cards
+  redesigned as structure left + four view sections on view-coloured backgrounds (Morgan fingerprint with the real
+  on-bits as a barcode, targets, mechanism, Cell Painting profile / none); syringe-on-plate icon before Treated; right
+  column top-to-bottom and straight (fusion → transfer → + → compound effect → × → + → response), with control PCs and
+  context entering from the left; one unavoidable crossing (context → residual over the control-PC line) drawn as a hop.
+  - Palette change (user: Cell Painting green so it is not confused with the fusion blue): `style.py` VIEW is now
+    chem #d33f49 (red, as in the sketch), tgt #eda100, moa #e87ba4, morph #1baf7a. Figs 2 and 3 pick this up on their
+    next regeneration (Fig. 2's chemistry-kernel bar becomes red next to the orange plate baseline; check contrast).
+- 02:25 Fig. 1 v6 placed in the paper (user: "先替换fig1，包括svg等"; not committed, not pushed).
+  - `paper/figures/fig1_pipeline_preview.{pdf,svg,png}` and `fig1_pipeline_source.{json,csv}` regenerated by
+    `fig1_cards_data.py` / `fig1_cards.py` (both now default to `paper/figures`). User (mid-turn): component SVGs too
+    → `paper/figures/fig1_parts/fig1_part_{cards,kernels,fusion,transfer,context}_preview.svg` (`--parts`;
+    `style.save` gained an `exts` argument, default unchanged).
+  - v4 assets kept in `paper/legacy/fig1_v4/`; `scripts/figures/fig1_pipeline.py` marked superseded and now writes
+    `fig1_pipeline_v4*` only.
+  - Caption rewritten in `sections/01_introduction.tex` (worked example; `% SRC:` report §9, added today with the
+    kernel values); dossier `figures/fig1_pipeline.md` rewritten for v6, caption mirror synced (`sync_captions.py
+    --check`: all in sync); `figures/BRIEF.md` Fig. 1 section updated (layout fixed, Hanzhe polishes only).
+  - Build check (tectonic, scratch copies): compiles, no undefined references. Page budget with relaxed float
+    parameters: "Code availability" on page 11, line 24 of 54 (old v4 figure and caption: line 8). Within title + 10.
+    With default float parameters the 4.42-in figure plus caption exceeds `\topfraction` (0.7) and Fig. 1 floats to
+    after the references, joining Figs 2–3 (known since 11-01). Fix options for the user: float parameters in
+    `main.tex` (fixes all three) or a shorter figure/caption.
+- 02:55 v7 layout (user mock-up arranged from the part SVGs: "kernels 大一点，字小一点放在左边，kernel transfer 放在下面离
+  plate 近一点，避免电路图式长线"). Deck 0.92 in with view names (4.8 pt) in its lower-left corner; kernel transfer in the
+  bottom band right after the residual (straight into the per-line row, short branch to the shared row); fusion box
+  centred over the transfer's similarity column (straight drop); output column at x = 6.16 with labels on the left;
+  canvas 6.5 × 4.60 in. Written to `paper/figures/` with `fig1_parts/*.svg`. Page check (relaxed floats): page 11,
+  line 24 of 54 (unchanged). Control-PC and context lines stay long straight horizontals (DMSO is far left, the
+  interaction and sum far right); the residual elbow is gone.
+- 03:20 Float placement and push (user: "确实 我们需要让fig都在尽量正确的位置。然后可以push了").
+  - `main.tex`: `\topfraction` 0.9, `\bottomfraction` 0.8, `\textfraction` 0.07, `\floatpagefraction` 0.85,
+    topnumber 3, totalnumber 5 (fonts, margins, spacing untouched). Default build (tectonic): 15 pages; Fig. 1 cited
+    p2 → placed top of p3; Fig. 2 cited p4 → p5; Fig. 3 cited p9 → p10; text ends p11 line 24 of 54; no undefined
+    references. Before: all three figures after the references (16 pages).
+  - Pushed `paper/` eb0f124..d94f79b: 376ea72 citations (the 11-01 reference work, previously uncommitted; the intro's
+    citation hunks staged separately from the Fig. 1 caption), ba3ee73 Fig. 1 v7, d94f79b float settings.
+    `legacy/fig1_v4/*.pdf` stays local (repo ignores PDFs outside `figures/`); its v4 copy is in eb0f124.
+  - Overleaf still needs Menu → GitHub → Pull GitHub changes into Overleaf.
+
+### 2026-11-02 03:40 — User: Tahoe sparsity test, residual-selected cross-line weights, and the external reviewer's four questions (plans declared before any run)
+
+User (03:30): run the Tahoe sparsity test; it can become a conclusion. Test choosing the cross-line weights by the
+residual metric if the agent thinks it is sound; the user checks the result. Update the paper: the Tahoe residual
+paragraph and the Molina & Zhang positioning (Codex's wording as a reference). Assess which of the external (GPT)
+reviewer's four questions can be resolved: (1) how much compound-specific signal PCC_plate isolates, under a
+compound-label randomisation that keeps plate, line and missing-view pattern; (2) whether the interaction's
+leave-one-out training inputs are out-of-sample with respect to the KTA view weights; (3) the gain by the test
+compound's view coverage; (4) the scope of the Tahoe cross-line claim (wording).
+
+Fact checked for (2), `cache_undetect.run_fold`: the KTA view weights are computed from the mean residuals of **all**
+training compounds, so the left-out compound did enter its own weights; λ and (g, h) are chosen on valid rows and are
+not affected. The backbone B on training rows is also an in-sample prediction (drug-free MLP trained on those rows).
+The analytic leave-one-out is exact for the fixed fused kernel only. Fact for (3): in `drugs.tsv` targets and MoA have
+the same coverage (2,957 of 8,276 = 35.7%; corrected 04:00 from 2,955, a rounding slip); "pharmacology" below = targets/MoA present.
+
+**E1 — Tahoe sparsity (`run_l1000_xline.py --keep-lines k`).** Each training compound keeps its rows in k randomly chosen
+lines (fixed per compound across folds, seed 0); its other rows are dropped from every fit (line means, per-line KRR,
+consensus g, inner CV). Test compounds keep all 50 lines, so the test rows are those of the complete-grid runs. k ∈
+{5, 10, 25}; k = 50 is the existing `_Dw` run. Slices T-0.5 and T-5, ik14 split, seed 0, kernel D. Arms `mkl_D`
+(per-line), `pool_D` (+ cross-line). Statistic: Δ = `pool_D` − `mkl_D`, line-macro, ACTIVE rows, ik14-group bootstrap,
+full and residual Pearson. Hypothesis (record 2026-10-31 18:30): the cross-line term adds compound information only
+when a line has not measured the compound. **Rule:** the conclusion "on Tahoe the cross-line term improves the
+compound-specific deviation once compounds are profiled in few lines" is stated if at k = 5 the residual Δ has a CI
+above 0 at both doses and the residual Δ at k = 5 exceeds the k = 50 value at both doses. Otherwise the paper keeps the
+observed contrast without the complete-grid explanation. With k = 5 a line has ~28 training compounds (≥ 20, the
+script's minimum).
+
+**E2 — residual-selected cross-line weights (arm `poolr_D`, same runs and the k = 50 run).** In plain terms: the model
+predicts line mean + a·(cross-line term) + b·(per-line term); a and b are now picked by inner CV on full Pearson, which
+the line mean dominates on Tahoe (0.644 of 0.667). `poolr_D` picks (a, b) on the inner-CV residual Pearson instead
+(prediction and truth minus the inner line mean); nothing else changes. **Rule (reported to the user, who checks it):**
+if on the complete grid `poolr_D` − `mkl_D` residual Δ has a CI that includes or exceeds 0 at both doses, the residual
+drop of `pool_D` is attributed to the selection criterion; its full-Pearson cost is reported alongside.
+
+**E3 — joint compound-label permutation null for PCC_plate (`sdst_view_ablation.py --sets permjoint`).** All four view
+kernels get the same permutation of compound labels, drawn within strata of the compound's view-availability pattern
+(which of chem / tgt / moa / morph it has), over all 8,276 compounds. Rows, plates, lines, backbone (`cache_v1`) and
+coverage are unchanged; only which compound's information a row receives is broken. Full pipeline (KTA weights,
+leave-one-out terms, interaction) refitted. Permutation seeds 0–4, five folds each. Statistic: PCC_plate and PCC_DEG of
+`transfer` and `undetect` minus the backbone, per fold, against the real run (`views_final` multi_norm: +0.0600
+PCC_plate). **Rule:** "the PCC_plate gain requires compound identity" is stated if every permuted run is below the real
+gain in every fold; the permuted gain (mean, max over seeds) is reported as the part not attributable to compound
+information. Answers question (1) together with the existing `pool_plate` control (+0.0006).
+
+**E4 — fully cross-fitted interaction inputs (new `sdst_crossfit_interaction.py`).** On the `cache_v1` backbone, per
+fold: valid/test transfer terms as in `cache_undetect`; training-row G and H replaced by 5-fold cross-fitted values over
+training compounds (seed 0), each fit recomputing the KTA weights and the fused kernel from the in-fold compounds only
+(λ fixed at the cache value). Arms: `undetect_loo` (must reproduce 0.1600), `undetect_xfit` (weights refitted),
+`undetect_xfit_fixw` (cross-fitted, weights fixed: separates fewer training compounds from the weight leak). The backbone
+B stays in-sample on training rows (not addressed; stated as a limitation if relevant). **Rule:** the interaction gain
+(`undetect` − transfer, PCC_plate) is reported as robust to full cross-fitting if under `undetect_xfit` it is > 0 with
+compound-bootstrap CI > 0 in ≥ 4 of 5 folds; otherwise the paper reports the reduced gain.
+
+**E5 — gain by view coverage (analysis only, `final_cpu` predictions).** Test compounds in four strata: structure only,
+pharmacology without Cell Painting, Cell Painting without pharmacology, both. Per stratum: UnDetect (`ctx_pc`) −
+backbone, multi-view transfer (`pool_kta`) − chemistry-only transfer (`pool_chem`), PCC_plate and PCC_DEG, compound
+bootstrap. No decision rule: descriptive, defines the paper's scope statement. Already known (report §8.2): the gain of
+multi-view over chemistry is −0.0026 for compounds without targets and without Cell Painting.
+
+Paper: rewrite the Tahoe residual paragraph after E1/E2; add the Molina & Zhang positioning sentence now.
+
+### 2026-11-02 04:05 — E1/E2/E5 read; an unplanned diagnostic for question (1); paper edits so far
+
+- **E1 (report §10.1): rule met.** At 5 lines per training compound the cross-line term raises the residual Pearson by
+  +0.015 at both doses (CI > 0). The gain falls with coverage, to −0.005 / −0.002 on the complete grid; the full-Pearson
+  gain stays at +0.005 to +0.007 throughout. The complete-grid explanation of 2026-10-31 18:30 is therefore supported
+  and becomes a stated conclusion in the paper.
+- **E2 (report §10.2): met at 0.5 µM, missed at 5 µM by a hair** (upper bound −0.00005). Selected on residuals, the
+  complete-grid model switches the cross-line term off in 235 / 216 of 250 cases. A design flaw found while reading it:
+  residual Pearson is scale-invariant, so with a = 0 the scale b is not identified and the grid's first value
+  (b = 0.25) is chosen, which is what costs the full Pearson. A cleaner variant (ratio a/b on residuals, overall scale on
+  full) was not declared and is not run. **The user checks E2;** it is not in the paper.
+- **E5 (report §10.3), descriptive.** For structure-only compounds (57%) multi-view is slightly below chemistry
+  (−0.004) and XPert is ahead of UnDetect on PCC_plate (−0.013). With Cell Painting UnDetect leads XPert (+0.020 to
+  +0.036). The blend leads XPert in every stratum. The paper's Discussion now states this scope.
+- **Unplanned diagnostic for question (1)** (`scripts/analyze_plate_mate_count.py`, report §10.6). Reason: the
+  reviewer's mechanism (error in m_i enters both sides) predicts that a drug-free model's PCC_plate falls with the
+  number of training plate-mates, which is checkable from saved predictions. It does: backbone 0.536 at ≤ 2 plate-mates,
+  0.035 at > 50 (47% of rows). The UnDetect − backbone gain is +0.023 to +0.087 in every bin. Not declared in advance;
+  reported as a diagnostic. Seen in the same table: XPert leads UnDetect where m_i is noisy (≤ 20 plate-mates: −0.022,
+  CI < 0), and UnDetect leads where it is precise (> 20 plate-mates, 70% of rows: +0.014 [+0.008, +0.020]). Why XPert
+  gains most on small plates is not established.
+- Paper (local, not pushed): intro sentence on Molina & Zhang (source-line responses vs static descriptors; our question:
+  can pharmacology/morphology supply the prior for a compound with no transcriptional profile); Tahoe paragraph
+  rewritten on E1; Discussion scope (E5) and the Tahoe limitation (question 4). The abstract is not changed: it is
+  frozen, and its Tahoe sentence is true for the full correlation; the user decides whether a minor edit is wanted.
+  Build: text ends on page 11, line 34 of 51 (title + 10).
+
+### 2026-11-02 04:20 — User decisions on presentation; paper edits (not built, not pushed)
+
+User asked: (1) is Cell Painting the only place we beat XPert, and does reporting the structure-only loss break the
+launch-style (non-defensive) principle; (2) should the UnDetect + XPert ensemble be in Table 2; (3) is Tahoe a positive
+result; (4) report the > 20 plate-mate lead over XPert? Agent's answers: (1) No. UnDetect beats XPert on PCC_DEG in every
+coverage stratum; on PCC_plate it leads with Cell Painting, ties with pharmacology only, and trails only for
+structure-only compounds. Main text: positive gradient + ensemble, structure-only comparison removed from the main text;
+full table in the appendix (data kept, not hidden). (2) Yes, as a separated, clearly labelled ensemble row. (3) Yes:
+positive where lines are sparsely profiled, with the complete grid as the boundary case; sparsity is a simulation and is
+stated so. (4) Yes, with per-bin table in the appendix; the 20 cut-off is post hoc, so the main text points to the bins.
+User (04:15): "这些先改了，然后不用检查别的，之后等结果到了再改他们的部分，然后再检查。"
+
+Edits to `paper/` (local):
+- Table 2: new row "UnDetect + XPert (ensemble)" 0.661 / +0.023 / 0.186 / +0.086 below a rule; caption: bold = best
+  single model, ensemble definition.
+- §4.1:
+  - plate-mate diagnostic sentence (backbone 0.54 → 0.03, gain at every plate size; PCC_plate read as a gain over the
+    drug-free backbone);
+  - XPert tie split by plate-mate count (+0.014 above 20, XPert ahead below).
+- Discussion: removed "for structure alone the end-to-end encoder is ahead by 0.013"; points to `tab:app-coverage`.
+- Appendix: `tab:app-coverage` (report §10.3) and `tab:app-platemates` (report §10.6).
+- Pending E3/E4: the permutation null in §4.1 and the interaction cross-fit statement, then a build check.
+
+### 2026-11-02 04:35 — E3 and E4 verdicts (report §10.4, §10.5)
+
+- **E3: rule met.** Under a joint compound-label permutation within view-availability strata, UnDetect falls to the
+  backbone: PCC_plate 0.0984, gain −0.0016 with CI < 0 in all 25 runs; PCC_DEG gain +0.0002. Real gain +0.060. With the
+  plate-mate diagnostic (§10.6) this answers the reviewer's question (1): the drug-free 0.10 comes from error in the plate
+  mean; the gain above it needs compound identity.
+- **E4: rule met.** With view weights refitted inside a 5-fold cross-fit, the interaction gain is +0.0050 (5/5 CI > 0),
+  identical to leave-one-out. Answers question (2). Remaining caveat (not tested): in-sample backbone on training rows.
+- Paper next: §4.1 permutation sentence; interaction paragraph and Method note on cross-fitting; then build and check.
+
+### 2026-11-02 05:00 — External reviewer's follow-up: wording tightened; the two split questions checked
+
+Reviewer (GPT, pasted by the user): keeps weak accept with higher confidence. Asks to tighten the claims: plate-mean error
+is the *main* source of the backbone's PCC_plate, not provably all of it; E3 shows the gain needs the correct
+compound–view correspondence, not that it is an isolated biological effect; the real result is not 25 independent
+replicates. E4 should be called compound-stage cross-fitting (backbone fixed). Two sentences in the main text; protocol
+in the appendix. Two remaining questions:
+- **Sparse Tahoe holds out test compounds entirely: yes.** ik14 split, `train_cf = ~test_cf` per compound
+  (`run_l1000_unseen_drug.make_folds`). `--keep-lines` thins only training compounds' rows (`tr_rows = train_cf & keep_row`),
+  and inner CV runs over training compounds. Test compounds enter no fit in any line.
+- **Ensemble weight vs the target fold's labels: not strictly.** It was chosen on fold f+1's test rows, from models
+  trained with group f. The clean rule (fold f−1) was checked: w = 0.4 in every fold again, so the numbers are
+  identical. Fixed w = 0.5: still above both in 5/5 (report §10.7).
+
+Paper edits (local): "mainly because" for the plate-mean explanation; the permutation sentence replaced by the
+reviewer's wording; Method sentence → "With the backbone fixed, five-way compound-stage cross-fitting, including
+re-estimation of the view weights, retains the interaction gain …"; ensemble weight described as "chosen on a fold whose
+models never saw the test compounds" (Table 2 caption and §4.1); new appendix subsection "Controls for the compound
+terms" (permutation protocol: one mapping per compound applied to all its samples and all four kernels, refit scope,
+backbone fixed; cross-fit protocol) with per-fold table `tab:app-controls`. Report §10.4: real-compound row relabelled
+as one run per fold.

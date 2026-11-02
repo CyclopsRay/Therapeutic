@@ -17,6 +17,10 @@ Test compounds are held out of every line in a fold (compound-level folds), so g
 fitted on the inner-CV predictions of the training rows (the rows that choose (a, b)), lam = c * mean_j sum_i u_ij^2,
 c in GATE_CS chosen by cross-fitting over the inner folds (c = inf returns pool_K). gate_line_K: one delta per
 (line, gene), the line-identity gate; gate_scale_K: one delta per gene shared by all lines (control).
+poolr_K (added 2026-11-02, report/11_06_record.md E2): pool_K with (a_L, b_L) chosen on the inner-CV residual Pearson
+(prediction and truth minus the inner line mean) instead of the full Pearson.
+--keep-lines k (added 2026-11-02, E1): each compound keeps its rows in k randomly chosen lines (fixed per compound,
+--seed) when it is a training compound; its other rows enter no fit. Test compounds keep all their lines.
 """
 from __future__ import annotations
 
@@ -208,16 +212,23 @@ def main(args: argparse.Namespace) -> None:
                                                           sl["plates"].astype(str), n_c)
     K, known, has_morph = build_kernels(d, compounds, targets, moas, args.seed)
     lines = sorted(set(line_rows))
-    print(f"{len(Y_all):,} rows, {n_c:,} compounds, {len(lines)} lines; KNOWN {known.sum()}, MORPH {has_morph.sum()} "
-          f"({time.time() - started:.0f}s)", flush=True)
+    keep_row = np.ones(len(Y_all), bool)
+    if args.keep_lines:
+        rng = np.random.default_rng(args.seed); keep_row[:] = False
+        for c in range(n_c):
+            rc = np.where(row_c == c)[0]; lc = np.unique(line_rows[rc])
+            keep_row[rc[np.isin(line_rows[rc], rng.choice(lc, min(args.keep_lines, len(lc)), replace=False))]] = True
+    print(f"{len(Y_all):,} rows, {n_c:,} compounds, {len(lines)} lines; KNOWN {known.sum()}, MORPH {has_morph.sum()}; "
+          f"--keep-lines {args.keep_lines}: {keep_row.sum():,} rows usable for training ({time.time() - started:.0f}s)",
+          flush=True)
 
     records, log = [], []
     for f in (args.folds or range(run.N_OUTER)):
         # ---- drug-level consensus model g over all training compounds of the fold
-        mu = {L: Y_all[(line_rows == L) & train_cf[row_c, f]].mean(0) for L in lines}
+        tr_rows = train_cf[row_c, f] & keep_row
+        mu = {L: Y_all[(line_rows == L) & tr_rows].mean(0) for L in lines}
         resid = Y_all - np.stack([mu[L] for L in line_rows])
         ctr = np.where(train_cf[:, f])[0]
-        tr_rows = train_cf[row_c, f]
         csum = np.zeros((n_c, Y_all.shape[1])); ccnt = np.zeros(n_c)
         np.add.at(csum, row_c[tr_rows], resid[tr_rows]); np.add.at(ccnt, row_c[tr_rows], 1)
         ctr = ctr[ccnt[ctr] > 0]
@@ -266,7 +277,7 @@ def main(args: argparse.Namespace) -> None:
             if args.lines and L not in args.lines:
                 continue
             rows = np.where(line_rows == L)[0]; cl = row_c[rows]; Y = Y_all[rows]; act = active_all[rows]
-            tr = np.where(train_cf[cl, f])[0]; te = np.where(test_cf[cl, f])[0]
+            tr = np.where(train_cf[cl, f] & keep_row[rows])[0]; te = np.where(test_cf[cl, f])[0]
             if len(te) == 0 or len(tr) < 20:
                 continue
             m = Y[tr].mean(0); R = Y[tr] - m
@@ -298,8 +309,10 @@ def main(args: argparse.Namespace) -> None:
                 ok = act[tr] & ~np.isnan(f_in[:, 0]) & ~np.isnan(g_in[:, 0])
                 Yv, Fv, Gv, Mv = Y[tr][ok], f_in[ok] - mu_in[ok], g_in[ok], mu_in[ok]
                 best = {}
-                for name, grid_b in ((f"pool_{kname}", GRID_B), (f"gonly_{kname}", (0.0,))):
-                    sc = {(a, b): run.rowwise_pearson(Mv + a * Gv + b * Fv, Yv).mean()
+                for name, grid_b, resid_sel in ((f"pool_{kname}", GRID_B, False), (f"gonly_{kname}", (0.0,), False),
+                                                (f"poolr_{kname}", GRID_B, True)):
+                    sc = {(a, b): (run.rowwise_pearson(a * Gv + b * Fv, Yv - Mv) if resid_sel else
+                                   run.rowwise_pearson(Mv + a * Gv + b * Fv, Yv)).mean()
                           for a in GRID_A for b in grid_b}
                     best[name] = max(sc, key=sc.get)
                     a, b = best[name]
@@ -368,6 +381,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--kernels", nargs="*", default=list(KERNELS), choices=list(KERNELS))
     p.add_argument("--folds", nargs="*", type=int, default=None)
     p.add_argument("--gate", nargs="*", default=[], choices=list(KERNELS), help="add gate_line_K / gate_scale_K on pool_K")
+    p.add_argument("--keep-lines", type=int, default=0, help="training compounds keep k random lines (0 = all)")
     p.add_argument("--out", default="/nfs-stor/yuqi.lei/Therapeutic/results/l1000_xline")
     return p.parse_args()
 

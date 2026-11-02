@@ -6,7 +6,9 @@ fused kernel, leave-one-out terms on training rows), on the cached backbone B in
 interaction as `stage2_context.py` arm ctx_pc (c in CS, K in KS, chosen on valid PCC_DEG in the same order and with the
 same strict comparison; c = inf returns the transfer terms). View sets as `run_sdst_hybrid.py --viewsets`: multi_norm
 (all four views; must reproduce stage2_v2), only_<v>, minus_<v> and perm_<v> (v's compound labels permuted among the
-compounds that have v, seed --perm-seed). Stores per-sample test scores (PCC_DEG on all test rows, PCC_plate on rows
+compounds that have v, seed --perm-seed) and permjoint (added 2026-11-02, report/11_06_record.md E3: one permutation of
+compound labels applied to all four views, drawn within strata of the view-availability pattern, so coverage, rows,
+plates and lines are kept and only compound identity is broken). Stores per-sample test scores (PCC_DEG on all test rows, PCC_plate on rows
 with a training plate-mate, plate mean as `finalize_sdst.py`), not predictions.
 Writes results/sdst_hybrid/<tag>/fold_<f>/{scores.npz, summary.json}. `--summarize` pools the folds into
 <tag>/{table.csv, summary.json}: five-fold means and paired contrasts vs multi_norm (same arm) with a 2,000-replicate
@@ -32,6 +34,17 @@ from stage2_context import CS, KS, pcc  # noqa: E402
 
 SETS = ["multi_norm"] + [f"{k}_{v}" for k in ("only", "minus", "perm") for v in VIEWS]
 ARMS = ("transfer", "undetect")
+
+
+def permute_joint(K: dict, has: dict, seed: int) -> None:
+    """K[v + '_pj'] for every view: compound i takes compound src(i)'s rows in all views, src a permutation within the
+    compounds sharing i's view-availability pattern."""
+    pattern = np.stack([has[v] for v in VIEWS], 1) @ (1 << np.arange(len(VIEWS)))
+    rng = np.random.default_rng(seed); src = np.arange(len(pattern))
+    for p in np.unique(pattern):
+        idx = np.flatnonzero(pattern == p); src[idx] = rng.permutation(idx)
+    for v in VIEWS:
+        K[v + "_pj"] = K[v][np.ix_(src, src)]
 
 
 def context_pcs(ctl: np.ndarray, tr: np.ndarray) -> np.ndarray:
@@ -80,7 +93,9 @@ def run(args) -> None:
     Knp, feats = drug_kernels(table)
     for v in sorted({s.split("_", 1)[1] for s in args.sets if s.startswith("perm_")}):
         permute_view(Knp, feats["has"], v, args.perm_seed)
-    ctl, Y, g = A["ctl"].astype(np.float64), A["delta"], A["group"]
+    if "permjoint" in args.sets:
+        permute_joint(Knp, feats["has"], args.perm_seed)
+    ctl, Y, g =A["ctl"].astype(np.float64), A["delta"], A["group"]
     log("data and kernels ready")
     for f in args.folds:
         te = g == f; va = g == (f + 1) % 5; tr = ~te & ~va
@@ -92,7 +107,7 @@ def run(args) -> None:
         out = {f"none|backbone|{k}": v for k, v in score(B[te]).items()}
         summ = {"fold": f, "backbone": args.backbone, "perm_seed": args.perm_seed, "sets": {}}
         for s in args.sets:
-            views, norm = viewset(s); assert norm, s
+            views, norm = ([v + "_pj" for v in VIEWS], True) if s == "permjoint" else viewset(s); assert norm, s
             res, _, G, H = run_fold(f, A, [T(Knp[v]) for v in views], Knp, args, views=views, B=B, save=False)
             U = res["g"] * G + res["h"] * H
             Pi, ch = interaction(Y, B, U, Z, tr, va, te)
