@@ -18,7 +18,8 @@ fitted on the inner-CV predictions of the training rows (the rows that choose (a
 c in GATE_CS chosen by cross-fitting over the inner folds (c = inf returns pool_K). gate_line_K: one delta per
 (line, gene), the line-identity gate; gate_scale_K: one delta per gene shared by all lines (control).
 poolr_K (added 2026-11-02, report/11_06_record.md E2): pool_K with (a_L, b_L) chosen on the inner-CV residual Pearson
-(prediction and truth minus the inner line mean) instead of the full Pearson.
+(prediction and truth minus the inner line mean) instead of the full Pearson. poolb_K (E2b, same day): b = 1 fixed and
+only a chosen on the residual Pearson, so a = 0 is exactly mkl_K (poolr_K leaves the scale b unidentified).
 --keep-lines k (added 2026-11-02, E1): each compound keeps its rows in k randomly chosen lines (fixed per compound,
 --seed) when it is a training compound; its other rows enter no fit. Test compounds keep all their lines.
 """
@@ -310,7 +311,7 @@ def main(args: argparse.Namespace) -> None:
                 Yv, Fv, Gv, Mv = Y[tr][ok], f_in[ok] - mu_in[ok], g_in[ok], mu_in[ok]
                 best = {}
                 for name, grid_b, resid_sel in ((f"pool_{kname}", GRID_B, False), (f"gonly_{kname}", (0.0,), False),
-                                                (f"poolr_{kname}", GRID_B, True)):
+                                                (f"poolr_{kname}", GRID_B, True), (f"poolb_{kname}", (1.0,), True)):
                     sc = {(a, b): (run.rowwise_pearson(a * Gv + b * Fv, Yv - Mv) if resid_sel else
                                    run.rowwise_pearson(Mv + a * Gv + b * Fv, Yv)).mean()
                           for a in GRID_A for b in grid_b}

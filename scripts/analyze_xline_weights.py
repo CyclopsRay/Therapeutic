@@ -21,7 +21,7 @@ import run_l1000_unseen_drug as run
 
 RES = Path("/nfs-stor/yuqi.lei/Therapeutic/results/l1000_xline")
 ARMS = ("pool_Dml", "pool_Dl1000", "mkl_Dml", "mkl_Dl1000", "mkl_D", "gonly_Dml", "gonly_Dl1000", "gonly_D",
-        "gate_line_D", "gate_scale_D", "pool_D", "poolr_D")  # pool_D, poolr_D: with --ref mkl_D (record 2026-11-02 E1/E2)
+        "gate_line_D", "gate_scale_D", "pool_D", "poolr_D", "poolb_D")  # pool_D, poolr_D: with --ref mkl_D (record 2026-11-02 E1/E2)
 
 
 def main() -> None:

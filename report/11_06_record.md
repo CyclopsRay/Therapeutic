@@ -967,3 +967,16 @@ models never saw the test compounds" (Table 2 caption and §4.1); new appendix s
 terms" (permutation protocol: one mapping per compound applied to all its samples and all four kernels, refit scope,
 backbone fixed; cross-fit protocol) with per-fold table `tab:app-controls`. Report §10.4: real-compound row relabelled
 as one run per fold.
+
+### 2026-11-02 05:20 — User: push; E2 revised with b fixed at 1; abstract unchanged; Fig. 1 lower-right routing
+
+User (05:15): push first (done: paper 8602645, Therapeutic 3ddaf83). E2: fix b = 1 and search a, so that a = 0 reads as
+"under complete training coverage the model finds no stable extra cross-line gain". Abstract: no change (true as
+stated). Fig. 1: the lines in the lower-right corner bend outwards; they should turn inwards.
+
+**E2b (declared before running).** New arm `poolb_D` in `run_l1000_xline.py`: b = 1 (per-line term at full weight), a in
+GRID_A chosen on the inner-CV residual Pearson. At a = 0 it equals `mkl_D` exactly, which removes the scale ambiguity of
+`poolr_D`. Runs: T-0.5 and T-5, complete grid and k = 5, 10, 25 (same tags, rerun). Report the share of line × fold cases
+with a = 0, and `poolb_D` − `mkl_D` (full, resid) with the ik14 bootstrap. **Reading rule:** the paper may state that
+"under complete training coverage the model finds no stable extra cross-line gain" if on the complete grid a = 0 in
+most cases (> 50%) at both doses and the residual Δ CI includes 0 at both doses.
