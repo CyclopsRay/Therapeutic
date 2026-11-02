@@ -45,6 +45,7 @@ cen = pd.concat([pd.DataFrame(json.loads((RES / "v3/centred.json").read_text())[
 rows = [{"panel": "a", "model": m, "with_drug": z.loc[m, "full_mean"], "drug_zeroed": z.loc[m, "comparator_mean"]}
         for m in z.full_mean.sort_values().index]
 rows.append({"panel": "a", "model": "UnDetect", "with_drug": fin_deg["ctx_pc"], "drug_zeroed": fin_deg["mlp"]})
+rows.append({"panel": "a", "model": "UnDetect\n+ XPert", "with_drug": fin_deg["ctx_pc+xpert"], "drug_zeroed": np.nan})
 A = pd.DataFrame(rows)
 
 fig = plt.figure(figsize=(6.5, 4.8))
@@ -59,13 +60,15 @@ d = fig.add_axes([0.335, 0.085, 0.60, 0.25])
 # (a) with vs without the drug input
 y = np.arange(len(A))
 for k, r in A.iterrows():
-    col = OURS if r.model == "UnDetect" else INK2
-    a.plot([r.drug_zeroed, r.with_drug], [k, k], color=GRID, lw=2, zorder=1, solid_capstyle="round")
+    col = OURS if r.model.startswith("UnDetect") else INK2
+    if np.isfinite(r.drug_zeroed):
+        a.plot([r.drug_zeroed, r.with_drug], [k, k], color=GRID, lw=2, zorder=1, solid_capstyle="round")
+        a.scatter(r.drug_zeroed, k, s=32, facecolor="white", edgecolor=col, lw=1.1, zorder=4)
     a.scatter(r.with_drug, k, s=32, color=col, zorder=3)
-    a.scatter(r.drug_zeroed, k, s=32, facecolor="white", edgecolor=col, lw=1.1, zorder=4)
 a.axvline(lk.plate_mean, color=PLATE, lw=1.1, zorder=2)
-a.set_yticks(y, A.model)
-a.get_yticklabels()[-1].set_color(OURS)
+a.set_yticks(y, A.model); a.get_yticklabels()[-1].set_fontsize(8); a.get_yticklabels()[-1].set_linespacing(0.9)
+for t in a.get_yticklabels()[-2:]:
+    t.set_color(OURS)
 a.set_xlim(0.2, 0.7); a.set_ylim(-0.6, len(A) - 0.4)
 a.set_xlabel(r"PCC$_\mathrm{DEG}$")
 a.grid(axis="x", color=GRID, lw=0.6); a.set_axisbelow(True)
@@ -93,46 +96,55 @@ fig.text(0.475, 1 - TOP + 0.94 * TOP, "b", fontsize=11, fontweight="bold", ha="l
 rows += [{"panel": "b", "group": g, "pcc_deg": v} for g, v in zip(names, vals)]
 
 # (c) plate-centred score: what distinguishes a compound from its plate-mates
-arms = [("plate_lookup", BASE, PLATE), ("mlp", "Drug-free MLP", CTX), ("pool_plate", "Plate kernel", MUTED),
+# 2026-11-02 user: plate-response baseline (0 by construction) dropped, rows sorted increasing from top to bottom,
+# axis from 0.05; dots instead of bars because the axis no longer starts at zero; ensemble added.
+arms = [("mlp", "Drug-free MLP", CTX), ("pool_plate", "Plate kernel", MUTED),
         ("transigen_zero", "TranSiGen, drug zeroed", "white"), ("transigen", "TranSiGen", INK2),
         ("xpert_zero", "XPert, drug zeroed", "white"), ("xpert", "XPert", INK2),
-        ("pool_chem", "Chemistry kernel", VIEW["chem"]), ("ctx_pc", "UnDetect", OURS)]
+        ("pool_chem", "Chemistry kernel", VIEW["chem"]), ("ctx_pc", "UnDetect", OURS),
+        ("ctx_pc+xpert", "UnDetect + XPert", OURS)]
+arms.sort(key=lambda t: cen[cen.arm == t[0]].centred_shared.mean())
 yc = np.arange(len(arms))[::-1]
 for k, (arm, name, col) in zip(yc, arms):
     f = cen[cen.arm == arm].centred_shared.to_numpy()
-    c.barh(k, f.mean(), height=0.62, color=col, edgecolor=INK2 if col == "white" else col, lw=0.8, zorder=2)
-    c.scatter(f, np.full(len(f), k) + np.linspace(-0.14, 0.14, len(f)), s=6, color=INK, zorder=3, lw=0)
+    c.scatter(f, np.full(len(f), k), s=5, color=MUTED, zorder=2, lw=0)
+    c.scatter(f.mean(), k, s=30, zorder=3, color=col, edgecolor=INK2 if col == "white" else col, lw=1.1)
     rows += [{"panel": "c", "arm": arm, "fold": i, "pcc_plate": float(v)} for i, v in enumerate(f)]
 c.set_yticks(yc, [n for _, n, _ in arms], fontsize=8)
-c.get_yticklabels()[-1].set_color(OURS)
+for t, (arm, _, _) in zip(c.get_yticklabels(), arms):
+    if arm.startswith("ctx_pc"):
+        t.set_color(OURS)
 c.set_xlabel(r"PCC$_\mathrm{plate}$", fontsize=8.5, labelpad=1)
-c.axvline(0, color=INK2, lw=0.6)
-c.set_xlim(-0.005, 0.17)
+c.set_xlim(0.05, 0.20); c.set_ylim(-0.6, len(arms) - 0.4); c.set_xticks([0.05, 0.10, 0.15])
 c.grid(axis="x", color=GRID, lw=0.6); c.set_axisbelow(True)
 c.spines["left"].set_visible(False); c.tick_params(axis="y", length=0)
 fig.text(0.475, 1 - TOP + 0.51 * TOP, "c", fontsize=11, fontweight="bold", ha="left", va="center")
 
-# (d) DeepCE's own benchmark: reported values (open) and our runs (filled)
+# (d) DeepCE's own benchmark
 bl = json.loads((DCE / "baselines/summary.json").read_text())
 xk = json.loads((DCE / "xline_kernel/deepce_split/summary.json").read_text())["arms"]
 mm = json.loads((DCE / "mlp_multimodal/summary.json").read_text())
 rep = np.mean([np.load(DCE / f"ppi_seed{s}/test_pred_bestdev.npz")["per_sig_pearson"] for s in range(3)], 0).mean()
+# 2026-11-02 user: no reported / reproduced labels; models we ran show our value (DeepCE = our reproduction), the
+# others the value of Pham et al. (flag kept in the source table only); rows increase from top to bottom.
 D = [("Mean per line and dose", bl["mean_cell_dose"]["pearson"], MUTED, False),
-     ("$k$NN, reported", 0.3903, INK2, True), ("Neural network, reported", 0.3929, INK2, True),
-     ("DeepCE without attention, reported", 0.4418, INK2, True),
-     ("Morgan $k$NN, tuned", bl["knn_morgan"]["pearson"], MUTED, False), ("DeepCE, reproduced", rep, INK2, False),
-     ("DeepCE, reported", 0.4907, INK2, True), ("Chemistry kernel", xk["krr_chem_perline"]["test"], VIEW["chem"], False),
+     ("$k$NN", 0.3903, INK2, True), ("Neural network", 0.3929, INK2, True),
+     ("DeepCE without attention", 0.4418, INK2, True),
+     ("Morgan $k$NN, tuned", bl["knn_morgan"]["pearson"], MUTED, False), ("DeepCE", rep, INK2, False),
+     ("Chemistry kernel", xk["krr_chem_perline"]["test"], VIEW["chem"], False),
      ("MLP, same compound views", mm["mlp_multi"]["test_seedavg_per_sig"], CTX, False),
      ("UnDetect, chem. + targets + MOA", xk["krr_chem_kn_norm_xline"]["test"], OURS, False),
      ("UnDetect, all views", xk["krr_multi_norm_xline"]["test"], OURS, False)]
-yd = np.arange(len(D))
+D.sort(key=lambda t: t[1])
+yd = np.arange(len(D))[::-1]
 for k, (name, v, col, reported) in zip(yd, D):
-    d.scatter(v, k, s=32, zorder=3, color="white" if reported else col, edgecolor=col, lw=1.1)
+    d.scatter(v, k, s=32, zorder=3, color=col, edgecolor=col, lw=1.1)
     d.text(v + 0.006, k, f"{v:.3f}", ha="left", va="center", fontsize=7.5, color=INK)
     rows.append({"panel": "d", "model": name, "pearson": float(v), "reported": reported})
 d.set_yticks(yd, [n for n, *_ in D], fontsize=7.5)
-for t in d.get_yticklabels()[-2:]:
-    t.set_color(OURS)
+for t, (name, *_) in zip(d.get_yticklabels(), D):
+    if name.startswith("UnDetect"):
+        t.set_color(OURS)
 d.set_xlim(0.3, 0.64); d.set_ylim(-0.6, len(D) - 0.4)
 d.set_xlabel("Pearson, DeepCE test split", fontsize=8.5, labelpad=1)
 d.grid(axis="x", color=GRID, lw=0.6); d.set_axisbelow(True)
