@@ -1,8 +1,8 @@
 """Fig. 2 of the UnDetect paper: what the drug-blind benchmark measures. Dossier: paper/figures/fig2_benchmark.md.
 
 (a) PCC_DEG of each model with its drug input and with it zeroed: the seven published models (Bai et al. 2026, fold
-    means) and UnDetect (compound lane on / off; off = its drug-free backbone); lines = drug-free MLP and the
-    plate-response baseline. (b) Plate-response baseline on test samples with and without a training plate-mate,
+    means) and UnDetect (compound lane on / off; off = its drug-free backbone); line = the plate-response
+    baseline (drug-free MLP line removed 2026-11-02, user: UnDetect's drug-zeroed point marks the drug-free level). (b) Plate-response baseline on test samples with and without a training plate-mate,
     next to the cell-line mean. (c) Plate-centred score PCC_plate: baseline, drug-free MLP, plate co-membership
     kernel, chemistry kernel, UnDetect, and XPert / TranSiGen with and without their drug input; dots = folds. (d) DeepCE's own benchmark (published split, per-signature Pearson):
     values reported by Pham et al. 2021 (open dots) next to our runs (filled).
@@ -64,7 +64,6 @@ for k, r in A.iterrows():
     a.scatter(r.with_drug, k, s=32, color=col, zorder=3)
     a.scatter(r.drug_zeroed, k, s=32, facecolor="white", edgecolor=col, lw=1.1, zorder=4)
 a.axvline(lk.plate_mean, color=PLATE, lw=1.1, zorder=2)
-a.axvline(mlp, color=CTX, ls="--", lw=1.1, zorder=2)
 a.set_yticks(y, A.model)
 a.get_yticklabels()[-1].set_color(OURS)
 a.set_xlim(0.2, 0.7); a.set_ylim(-0.6, len(A) - 0.4)
@@ -76,7 +75,6 @@ a.scatter([], [], s=32, facecolor="white", edgecolor=INK2, lw=1.1, label="drug z
 a.legend(loc="lower left", bbox_to_anchor=(-0.02, 1.0), ncol=2, frameon=False, fontsize=7.5, handletextpad=0.2,
          columnspacing=0.9, borderaxespad=0.1)
 a.text(lk.plate_mean - 0.006, -0.45, BASE, rotation=90, ha="right", va="bottom", fontsize=7.5, color=PLATE)
-a.text(mlp + 0.009, -0.45, "Drug-free MLP", rotation=90, ha="left", va="bottom", fontsize=7.5, color=CTX)
 panel(a, "a", -0.33)
 
 # (b) the baseline works only through plate-mates

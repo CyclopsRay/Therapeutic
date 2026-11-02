@@ -30,6 +30,7 @@ from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
 RES = Path("/nfs-stor/yuqi.lei/Therapeutic/results/sdst_hybrid/compound_analysis_final")
 ABL = Path("/nfs-stor/yuqi.lei/Therapeutic/results/sdst_hybrid/views_final/means.csv")
 NGENES = 30
+LABW = 0.50                                 # width of the row labels next to the strips (inches)
 ATOM_C = {"N": "#2a5bd7", "O": "#d43f3a", "S": "#b08800", "F": "#1a9a6c", "Cl": "#1a9a6c", "Br": "#8b3a1a",
           "P": "#e07b00", "B": "#b05a7a", "I": "#6b2fa0"}
 CMAP = LinearSegmentedColormap.from_list("div", [DIV_NEG, "#efeeeb", DIV_POS])
@@ -137,15 +138,26 @@ for k, e in enumerate(EX):
     sA, sB = (np.array(s_) for s_ in e["signature"])
     zA, zB = sA / sA.std(), sB / sB.std()
     g = np.argsort(-np.maximum(np.abs(zA), np.abs(zB)))[:NGENES]; g = g[np.argsort(-zA[g])]
+    xs = xl + LABW                           # strips start after the row label (compound name)
     for m, z in enumerate((zA, zB)):
         v = z[g] / np.abs(z[g]).max()
         c.imshow(v[None, :], cmap=CMAP, vmin=-1, vmax=1, aspect="auto", interpolation="nearest",
-                 extent=(xl, xl + wcol, 0.62 - m * 0.2, 0.78 - m * 0.2), zorder=2)
-        c.add_patch(plt.Rectangle((xl, 0.62 - m * 0.2), wcol, 0.16, fc="none", ec=LINE, lw=0.5, zorder=3))
+                 extent=(xs, xl + wcol, 0.62 - m * 0.2, 0.78 - m * 0.2), zorder=2)
+        c.add_patch(plt.Rectangle((xs, 0.62 - m * 0.2), xl + wcol - xs, 0.16, fc="none", ec=LINE, lw=0.5, zorder=3))
+        c.text(xs - 0.04, 0.70 - m * 0.2, e["pair"][m], fontsize=5.6, ha="right", va="center", color=INK2)
         rows += [{"panel": "d", "pair": "–".join(e["pair"]), "compound": e["pair"][m], "gene_rank": i,
                   "gene_index": int(gi), "z_scaled": float(vv)} for i, (gi, vv) in enumerate(zip(g, v))]
     c.text(xl + wcol / 2, 0.24, f"Tanimoto {e['tanimoto']:.2f}   r {e['resp_r']:.2f}", fontsize=7.5, ha="center",
            va="center", color=INK2)
+# colour key for the strips (2026-11-02, user: the strips were hard to read)
+kx, kw, ky, kh = 4.45, 0.9, 0.035, 0.07
+c.imshow(np.linspace(-1, 1, 64)[None, :], cmap=CMAP, vmin=-1, vmax=1, aspect="auto", extent=(kx, kx + kw, ky, ky + kh),
+         zorder=2)
+c.add_patch(plt.Rectangle((kx, ky), kw, kh, fc="none", ec=LINE, lw=0.5, zorder=3))
+c.text(kx - 0.05, ky + kh / 2, "down", fontsize=6.5, ha="right", va="center", color=INK2)
+c.text(kx + kw + 0.05, ky + kh / 2, "up", fontsize=6.5, ha="left", va="center", color=INK2)
+c.text(0.10, ky + kh / 2, f"Strips: plate-centred response on the {NGENES} strongest genes, same order in both rows",
+       fontsize=6.5, ha="left", va="center", color=INK2)
 c.set_xlim(0, 6.5); c.set_ylim(0, CH)
 
 save(fig, "fig_views", sys.argv[1] if len(sys.argv) > 1 else None, table=pd.DataFrame(rows))

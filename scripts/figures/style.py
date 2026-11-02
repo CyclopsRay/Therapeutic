@@ -22,7 +22,8 @@ INK, INK2, MUTED, LINE, GRID, PANEL = "#0b0b0b", "#52514e", "#8a8984", "#c3c2b7"
 CTX, CTX_LIGHT = "#6f6e69", "#e4e3df"          # context lane, drug-free models
 OURS, OURS_LIGHT = "#2a78d6", "#dbe8f8"        # UnDetect, compound lane
 PLATE = "#eb6834"                              # plate-response baseline
-VIEW = {"chem": "#1baf7a", "tgt": "#eda100", "moa": "#e87ba4", "morph": "#6250d6"}
+VIEW = {"chem": "#d33f49", "tgt": "#eda100", "moa": "#e87ba4", "morph": "#1baf7a"}   # 2026-11-02 user: Cell Painting
+                                                                              # green, structure red (Fig. 1 v5)
 DIV_NEG, DIV_POS = "#2a78d6", "#e34948"        # diverging pair for signed expression, gray midpoint
 
 
@@ -53,12 +54,13 @@ def basename(name: str) -> str:
     return name if FINAL else f"{name}_preview"
 
 
-def save(fig, name: str, outdir: Path | None = None, table=None) -> list[Path]:
-    """Write <name>[_preview].{pdf,svg,png}; `table` (a DataFrame) goes to <name>_source.csv."""
+def save(fig, name: str, outdir: Path | None = None, table=None, exts=("pdf", "svg", "png")) -> list[Path]:
+    """Write <name>[_preview].<ext> for each ext (default pdf, svg, png); `table` (a DataFrame) goes to
+    <name>_source.csv."""
     out = Path(outdir) if outdir else FIGDIR
     out.mkdir(parents=True, exist_ok=True)
     paths = []
-    for ext in ("pdf", "svg", "png"):
+    for ext in exts:
         p = out / f"{basename(name)}.{ext}"
         fig.savefig(p, dpi=300 if ext == "png" else None)
         paths.append(p)
