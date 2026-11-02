@@ -988,3 +988,16 @@ Complete grid: a = 0 in 94% / 86% of line × fold cases. The residual Δ vs the 
 training coverage the model finds no stable extra cross-line gain" is not licensed (5 µM CI excludes 0, by a hair).
 Agent's option for the user: a descriptive sentence without the rule's claim, e.g. "chosen on deviations, the
 cross-line weight is zero in 86–94% of line × fold cases on the complete grid", which is a fact; or leave E2b out.
+
+### 2026-11-02 06:10 — User: E2b stays out of the paper; headings, wording and two figure fixes (pushed)
+
+- E2b (report §10.8) is not used in the paper (user).
+- Style (user): avoid "What X does" and "X is Y, not Z". §2 → "Benchmark definition" with 2.1 "Task", 2.2 "Plate
+  structure", 2.3 "Plate-centred metric"; Results headings shortened to "Drug-blind benchmark", "DeepCE benchmark",
+  "Cross-line transfer", "Compound views". 2.2, 2.3, 4.1 and 4.3 were not named by the user; they were changed for
+  consistency. About a dozen sentences and two captions were rephrased.
+- Fig. 2a: drug-free MLP line removed (user). UnDetect's drug-zeroed point is the drug-free backbone at the same level.
+- Fig. 3d: compound names beside each strip and a colour key with an explanation. Fig. 3 picks up the view palette from
+  the user's style.py change (chemistry red, Cell Painting green, as Fig. 1), now committed.
+- Build: no undefined references; the main text ends on p. 11 with references starting on that page.
+- Pushed: paper 4d5fd42, Therapeutic 0cf55a6.
