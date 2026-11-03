@@ -1230,3 +1230,22 @@ User:
   - §3.5 gives the interaction objective with penalty κν‖β‖² before saying it is one linear system per gene.
   - Nothing else was found missing on re-check against `cache_undetect.py` and `stage2_context.py`.
 - **Build:** no undefined references, no overfull boxes. The text ends at 68% of p. 11.
+
+### 2026-11-03 05:20 — Acknowledgements and author contributions (local, not pushed)
+
+User:
+- Add acknowledgements and contributions.
+- Acknowledgements: heading only, with a TODO for Jun.
+- Contributions:
+  - Yuqi: method design and implementation, benchmarks, writing, figures.
+  - Hanzhe: figures, paper review, method discussion.
+  - Keqin: downstream and result analysis.
+  - Jun: overall project, discussions, PI role.
+
+Agent's change:
+- New `paper/sections/07_declarations.tex`, input after the Discussion and before the bibliography.
+- Acknowledgements: `\todo{Jun Wen to write …}`.
+- Contributions use initials.
+- Jun's line was worded by the agent ("conceived and supervised the project, set its direction and guided the
+  discussions"). Jun or the user to confirm.
+- Main text now ends at 81% of p. 11. The acknowledgements count towards the 10 pages, which leaves about 10 lines.
