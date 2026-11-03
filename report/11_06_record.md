@@ -1273,3 +1273,44 @@ User:
 - No leftover user comments, "prop:coverage", old penalty c, PC count K or scale s.
 
 **Build:** no undefined references. The text ends at 81% of p. 11.
+
+### 2026-11-03 06:00 — Appendix completed (paper c15e71e); ONGOING cleared; three external reviews received
+
+User: 先补附录；其他待办暂留；ONGOING 可以清了；讨论三份外部 review（另一个 Claude、GPT、DeepSeek）是否修订。
+User comment on the Claude review: "我感觉 Cell Painting ablation 极大地减弱了我们的 claim。要不删掉？"
+
+**Appendix (paper c15e71e, pushed; tectonic build: no undefined references, main text still ends on p. 11):**
+- A.3 DeepCE: reproduction paragraph (commit 9b0d04f; seeds 0.481 / 0.456 / 0.428, mean 0.455 vs reported 0.4907;
+  `10_09_report.md` §5.3). States that Fig. 2d "DeepCE" is the reproduction and kNN / NN / DeepCE-without-attention are
+  Pham et al.'s reported values. Chemistry KRR 0.4911 vs reported 0.4907 are separate measurements (the near-equality
+  that one reviewer flagged). Test-compound view coverage 92 / 62 / 62 / 72. `tab:deepce` gains "MLP, chemistry 0.511"
+  and "DeepCE (reproduced)". New `tab:app-resplits` (§4.5; exact means from `cv5_seed{0,1}/folds.csv`: chem+tgt+moa norm
+  cross-line 0.53754 / 0.54346, multi norm cross-line 0.57440 / 0.58306).
+- A.11 Null tests (`tab:app-nulls`, `10_09_report.md` §7): targets vs permuted, STRING one-hop vs rewired, adding Cell
+  Painting. Results now cite this table for the STRING claim. Left out: T2 − T2null (both nulls at once, not
+  separable) and degree-feature − mean (unclear contrast).
+- A.12 Data sources (`tab:app-data`): Zenodo 17182939 (MD5 4a58bc01), Zenodo 22095049, GEO GSE92742 / GSE70138
+  (SHA-512 verified, job 212309), DeepCE 9b0d04f, tahoe-de-rhaister c7963cf (2,000-gene deltas), compoundinfo_beta
+  (SHA-256 a71fca6d; Repurposing Hub, literature-curated, not L1000-derived), lincs-cell-painting A549 consensus
+  (SHA-256 1e04d0be, downloaded 2026-10-03, branch master, no commit pinned), STRING v12.0.
+- Dropped from the appendix: the GSNN / GEARS / DeepCE-gene-vector network audits (superseded line; CLAUDE.md:
+  network priors are a minor control). The grids were already in `tab:app-grids`.
+- Layout: `\usepackage{float}`; all appendix floats `[H]`, so every A.x header sits directly above its table (the
+  Claude review had seen empty A.3/A.5/A.6/A.9/A.10 headers).
+- Fig. 2d caption: "DeepCE is our reproduction … (A.3)"; `sync_captions.py` refreshed fig2.
+
+**ONGOING cleared:** only 364344 (GPU timing, PD) remains. Unanalysed finished runs (TranSiGen fold 0 357101,
+learning curve v5_lc*, 2K ladder) and unapproved items moved to `PLAN.md` Phase 8, "Parked 2026-11-03". K4 ticked.
+
+**Review facts checked against the reports (no new runs):**
+- XPert on test samples without a training plate-mate: plain PCC_DEG 0.5650 (`11_06_report.md` §4 table) vs UnDetect
+  final 0.5738 (§6.2) and backbone 0.536. Not yet in the paper.
+- Backbone seeds: three seeds on v1, sd ≤ 0.0002, UnDetect − MLP > 0 in 15/15 (`10_30_report.md` §5.5); not in the paper.
+- Shrunk oracle (§1, job 356090, older rows and arms): shrinkage chosen on validation gives 0.2020 vs 0.2002
+  unshrunk on PCC_plate. The paper's PCC_DEG oracle (0.628, unshrunk) is below the backbone.
+- Plate co-membership kernel +0.0057 PCC_DEG (§6.3), the same as the chemistry kernel; this is already shown in Table 2.
+- PLAN H1 (within-plate compound discrimination) and K2 (plate-disjoint split) were planned and never run.
+- Annotation source: compoundinfo / Repurposing Hub (literature-curated). An InChIKey first-block duplicate audit of the
+  drug-blind and DeepCE splits has not been done.
+
+Triage proposal sent to the user; decisions pending (next entry).
