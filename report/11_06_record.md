@@ -1374,3 +1374,31 @@ per fold, as for PCC_plate. Coverage reported: plates and units kept, and the sh
 - UnDetect vs XPert, the ensemble vs each, and XPert vs XPert-zero are reported as they come out. If UnDetect − XPert
   has CIs on both sides of 0, the paper says "level", as for PCC_plate.
 - If coverage is below 20% of test rows, the result goes to the appendix only, with coverage stated.
+
+### 2026-11-03 13:55 — B1 result (job 366182, report §12): reading rule met; paper edit follows
+
+- Job 366182 (cn-11, 4 CPU, 84 s, completed). An earlier submission 366181 was cancelled before it ran (pyarrow
+  missing in `deepce-gpu`; outputs switched to csv.gz).
+- Reading rule outcome: UnDetect PCC_within 0.117, > 0 in 5/5 folds with CI > 0 in 5/5, coverage 86% → main text.
+  UnDetect − XPert +0.025, CI > 0 in 5/5, so the paper says "leads", not "level". Ensemble 0.126.
+- Planned paper edits: define PCC_within in §2 next to PCC_plate (the shared-error reason in one sentence); add a
+  PCC_within column to Table 2 (no extra lines); Results: one sentence in the XPert paragraph; Discussion: recommend a
+  within-plate score; appendix A.x with the definition details and per-fold table. Page budget to be checked.
+
+### 2026-11-03 14:20 — PCC_within in the paper (paper pushed; see commit below)
+
+- §2.3: one sentence on the shared error of m_i plus the PCC_within definition, pointing to App. A.11 (new
+  `app:within`, `tab:app-within`, per-fold values and four paired differences).
+- Table 2: new PCC_within column, so no extra lines. Results: the backbone sentence notes that it scores exactly 0 on
+  PCC_within; the XPert paragraph adds "On PCC_within UnDetect leads XPert, 0.117 against 0.092, in every fold with
+  intervals above zero". Discussion recommends PCC_within (or a plate-keeping split).
+- **Removed from the main text for space:** "On PCC_plate, XPert is stronger where the plate mean rests on few
+  plate-mates, UnDetect on the 70% with > 20" (added 06:45 with the user's approval). Reason: it is superseded by the
+  zero-null metric, where UnDetect leads overall, and the page overflowed. `tab:app-platemates` and the figure stay in
+  the appendix. The user should confirm.
+- Page budget: the first builds overflowed. Table 2's caption grew by one line, so Table 3 left p. 9 and Fig. 3
+  moved to p. 11; the declarations spilled to p. 12. Fix: the caption is back to its old length; short tail lines
+  were trimmed (intro "about it", "same-input neural network", "reaches 0.637:", ensemble sentence, P1-24 parenthesis,
+  "five-way" in Method). Final: Tables 2 + 3 on p. 9, Fig. 3 on p. 10, references start at line 42/50 of p. 11
+  (about 7 lines of slack), no overfull boxes, no undefined references.
+- The Overleaf merge e64f13c (before these edits) only added an empty `sections/01_introduction_JW.tex`.

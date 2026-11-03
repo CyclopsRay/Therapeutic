@@ -810,3 +810,55 @@ compounds with a single test sample (0.7% of plate-mate rows). Every arm reprodu
 - The paper therefore uses it as a reference on PCC_plate only.
 - Rounded shares in the paper (Table 2 "gap closed"): 57 / 2 / 0 / 1 / 32 / 51 / 52 / 55 / 60 / 86%.
 - They supersede the n_d ≥ 2 shares above (59% / 85%) for the paper, because Table 2 reports all plate-mate rows.
+
+## 12. Within-plate contrast metric PCC_within (job 366182; `scripts/analyze_within_plate.py`; no training; 2026-11-03)
+
+Design and reading rule declared before the run: `11_06_record.md` 2026-11-03 07:00. Per fold, test samples are grouped
+by control row (= plate), averaged per (plate, compound), kept if the plate has ≥ 2 test compounds. Truth and every
+prediction are centred on their own plate mean over those compounds. Score = Pearson over the 978 genes per (plate,
+compound), mean over units. Centred predictions with max |value| < 1e-3 are set to zero (score 0). Bootstrap: 2,000
+replicates over test compounds per fold. Arms from `final_cpu/fold_*/pred_test.npz`. Source:
+`/nfs-stor/yuqi.lei/Therapeutic/results/sdst_hybrid/within_plate/{summary.json, folds.csv, contrasts.csv, units.csv.gz}`;
+log `logs/within-plate-366182.out`.
+
+Coverage: 86.1–86.6% of test rows per fold (13,166–13,918 units on 1,525–1,575 plates); 0–10 duplicate
+(plate, compound) rows merged per fold. Max within-plate spread of the centred predictions before zeroing: backbone `mlp`
+0.0 (exactly constant), published MLP 0.00078 (fp16 storage; zeroed by the tolerance), XPert-zero 0.0013 (not zeroed;
+scores −0.0000), all compound-aware arms 0.7–18.8.
+
+| arm | fold 0 | 1 | 2 | 3 | 4 | five-fold mean | plate-macro mean |
+|---|---|---|---|---|---|---|---|
+| backbone (drug-free MLP, ours) / published MLP | 0 | 0 | 0 | 0 | 0 | 0.0000 | 0.0000 |
+| + plate co-membership kernel (`pool_plate`) | 0.0000 | 0.0001 | −0.0003 | 0.0004 | 0.0012 | 0.0003 | 0.0003 |
+| + chemistry kernel (`pool_chem`) | 0.0788 | 0.0843 | 0.0807 | 0.0767 | 0.0794 | 0.0800 | 0.0879 |
+| same features, end to end (`mlp_input`) | 0.0924 | 0.0955 | 0.0903 | 0.0865 | 0.0973 | 0.0924 | 0.1013 |
+| same features, residual head (`nnf_multi`) | 0.1066 | 0.1061 | 0.0986 | 0.0989 | 0.1124 | 0.1045 | 0.1141 |
+| UnDetect without interaction (`pool_kta`) | 0.1143 | 0.1172 | 0.1048 | 0.1044 | 0.1123 | 0.1106 | 0.1244 |
+| **UnDetect (`ctx_pc`)** | 0.1202 | 0.1234 | 0.1103 | 0.1108 | 0.1192 | **0.1168** | 0.1309 |
+| XPert (released) | 0.0865 | 0.0980 | 0.1018 | 0.0797 | 0.0942 | 0.0921 | 0.0942 |
+| XPert, drug input zeroed (released) | 0 | 0 | −0 | 0 | 0 | −0.0000 | −0.0000 |
+| TranSiGen (released) | 0.0751 | 0.0857 | 0.0832 | 0.0743 | 0.0762 | 0.0789 | 0.0852 |
+| DeepCE (released) | 0.0233 | 0.0298 | 0.0333 | 0.0226 | 0.0268 | 0.0272 | 0.0274 |
+| UnDetect + XPert (ensemble) | 0.1238 | 0.1329 | 0.1259 | 0.1177 | 0.1299 | 0.1260 | 0.1372 |
+
+| contrast | mean | folds > 0 | folds CI > 0 | folds CI < 0 |
+|---|---|---|---|---|
+| UnDetect − backbone | +0.1168 | 5 | 5 | 0 |
+| UnDetect − XPert | **+0.0247** | 5 | 5 | 0 |
+| ensemble − UnDetect | +0.0093 | 5 | 4 | 0 |
+| ensemble − XPert | +0.0340 | 5 | 5 | 0 |
+| XPert − XPert zeroed | +0.0921 | 5 | 5 | 0 |
+| UnDetect − without interaction | +0.0062 | 5 | 5 | 0 |
+| UnDetect − residual head (same features) | +0.0123 | 5 | 5 | 0 |
+| UnDetect − end to end (same features) | +0.0243 | 5 | 5 | 0 |
+| chemistry kernel − plate kernel | +0.0797 | 5 | 5 | 0 |
+| plate kernel alone | +0.0003 | 4 | 1 | 0 |
+
+- Reading rule met: UnDetect > 0 in 5/5 folds with CI > 0 in 5/5, coverage 86% → main-text sentence.
+- On PCC_plate UnDetect and XPert were level (+0.0031, no fold CI excluding 0; §6.2). On PCC_within, where every
+  compound-blind prediction is exactly 0, UnDetect leads XPert by +0.025 (27% above XPert) with CI > 0 in every fold.
+  The ordering of all other arms matches PCC_plate (Table 2), and the plate co-membership kernel stays at 0.
+- XPert with its drug input zeroed scores 0: all of XPert's within-plate variation comes from the compound input.
+- Interpretation left open: XPert's relative standing drops from PCC_plate to PCC_within. One candidate is that
+  XPert's PCC_plate gains more from the shared m_i error on plates with few plate-mates (XPert led in the ≤ 20
+  plate-mate bins, §10.6). This is not tested here.
