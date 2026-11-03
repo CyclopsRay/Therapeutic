@@ -1347,3 +1347,30 @@ sentences were shortened. Now the references start on p. 11 after the declaratio
 for Jun's acknowledgements.
 
 B1 (within-plate contrast metric): method question answered in chat; not run, awaiting the user's go.
+
+### 2026-11-03 07:00 — B1 within-plate contrast metric: design and reading rule (declared before running)
+
+User: 先 push 然后继续（main repo pushed; paper already at b9a7ed6).
+
+**Question.** PCC_plate centres truth and prediction on the same estimate m_i of the plate mean, so its error −e is
+shared by both sides and a compound-blind prediction scores > 0 (backbone 0.100; 0.536 with 1–2 plate-mates).
+Is the compound-specific gain still there on a metric whose compound-blind null is exactly zero?
+
+**Metric (PCC_within).** For each fold, group the test samples by control row (= plate). Average truth and
+predictions per (plate, compound) if a compound occurs more than once on a plate. Keep plates with ≥ 2 test
+compounds. Centre the truth on the plate's mean truth over these compounds and each prediction on its own plate mean.
+Then take the Pearson over the 978 genes per (plate, compound), averaged over units. A prediction that is constant
+within a plate (the drug-free backbone and the published MLP, whose input is the control alone) has a zero centred
+vector and scores 0 by definition. This is checked from the predictions (max within-plate spread).
+Training plate-mates are not needed, so rows without one are included.
+
+**Arms** (`final_cpu/fold_*/pred_test.npz`): mlp, mlp_bai, pool_plate, pool_chem, mlp_input, nnf_multi, pool_kta,
+ctx_pc (UnDetect), xpert, xpert_zero, transigen, deepce, ctx_pc+xpert. Bootstrap: 2,000 replicates over test compounds
+per fold, as for PCC_plate. Coverage reported: plates and units kept, and the share of test rows.
+
+**Reading rule.**
+- Main-text sentence "the gain holds on a metric with an exact zero null" if UnDetect's PCC_within > 0 in 5/5 folds
+  with the compound-bootstrap CI > 0 in ≥ 4/5. Otherwise appendix only, and PCC_plate is described as a proxy.
+- UnDetect vs XPert, the ensemble vs each, and XPert vs XPert-zero are reported as they come out. If UnDetect − XPert
+  has CIs on both sides of 0, the paper says "level", as for PCC_plate.
+- If coverage is below 20% of test rows, the result goes to the appendix only, with coverage stated.
