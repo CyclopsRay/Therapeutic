@@ -784,3 +784,29 @@ there falls back to the backbone on single-sample compounds). Ensemble = 0.6 UnD
 - These are descriptive shares; no bootstrap was run.
 - Source: `/nfs-stor/yuqi.lei/Therapeutic/results/sdst_hybrid/oracle_final/{scores.csv, summary.json}`; log
   `logs/oracle-final-364531.out`.
+
+### 11.1 v2: every Table 2 arm, on Table 2's rows (job 364547; same script, extended)
+
+The oracle on all test rows (PCC_DEG) and all plate-mate rows (PCC_plate). It falls back to the backbone for
+compounds with a single test sample (0.7% of plate-mate rows). Every arm reproduces `final.json` on both metrics
+(asserted in the script).
+
+| arm | PCC_DEG (all rows) | PCC_plate (plate-mate rows) | share of backbone → oracle distance (mean of folds) |
+|---|---|---|---|
+| backbone | 0.6372 | 0.1000 | 0 |
+| drug-free MLP, published | 0.6372 | 0.1018 | 0.019 |
+| + plate co-membership kernel | 0.6429 | 0.1006 | 0.006 |
+| + chemistry kernel | 0.6431 | 0.1326 | 0.323 |
+| same features, end to end | 0.6131 | 0.1510 | 0.508 |
+| + same features, residual head | 0.6477 | 0.1522 | 0.518 |
+| UnDetect without interaction | 0.6485 | 0.1551 | 0.546 |
+| XPert | 0.6315 | 0.1569 | 0.569 |
+| UnDetect | 0.6499 | 0.1600 | 0.595 |
+| UnDetect + XPert | 0.6605 | 0.1860 | 0.858 |
+| uniform oracle | 0.6281 | 0.2007 | 1 |
+
+- On PCC_DEG the oracle (0.628) is below the backbone (0.637). It adds the measured mean residual at full weight, so
+  noise in a few measurements costs more context accuracy than it gains, as in `10_30_report.md` §6.2.
+- The paper therefore uses it as a reference on PCC_plate only.
+- Rounded shares in the paper (Table 2 "gap closed"): 57 / 2 / 0 / 1 / 32 / 51 / 52 / 55 / 60 / 86%.
+- They supersede the n_d ≥ 2 shares above (59% / 85%) for the paper, because Table 2 reports all plate-mate rows.

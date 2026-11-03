@@ -9,6 +9,9 @@ least two test samples. Ensemble = 0.6 ctx_pc + 0.4 XPert (the weight chosen in 
 PCC_plate as in `finalize_sdst.py` (centred on the mean train delta of the sample's control row; rows with a training
 plate-mate). Truth and plate means in float64 from sdst.npz; predictions from final_cpu/fold_*/pred_test.npz (float16),
 so the script first checks its full-subset means against final.json. Writes results/sdst_hybrid/oracle_final/.
+v2 (record 2026-11-03, Table 2 row): every Table 2 arm; the oracle also on all test rows (PCC_DEG) and on all plate-mate
+rows (PCC_plate), falling back to the backbone for compounds with a single test sample (0.7% of plate-mate rows); the
+share of the backbone-to-oracle distance per fold on all plate-mate rows, as Table 2 reports PCC_plate.
 """
 from __future__ import annotations
 
@@ -22,7 +25,8 @@ import pandas as pd
 D = Path("/nfs-stor/yuqi.lei/Therapeutic/derived/xpert_sdst/v1")
 RES = Path("/nfs-stor/yuqi.lei/Therapeutic/results/sdst_hybrid")
 OUT = RES / "oracle_final"
-ARMS = ("mlp", "pool_kta", "ctx_pc", "xpert", "ctx_pc+xpert")
+ARMS = ("mlp", "mlp_bai", "pool_plate", "pool_chem", "mlp_input", "nnf_multi", "pool_kta", "ctx_pc", "xpert",
+        "ctx_pc+xpert")  # the rows of the paper's Table 2
 
 
 def pcc(a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -52,25 +56,33 @@ def main() -> None:
         two = nd >= 2
         for a, Pa in A.items():
             plate = np.full(len(d), np.nan); plate[sh] = pcc(Yt[sh] - m[sh], Pa[sh] - m[sh])
+            deg = pcc(Yt, Pa)
             for sub, sel in (("all_shared", sh), ("shared_nd>=2", sh & two)):
-                rows.append({"fold": f, "subset": sub, "arm": a, "n": int(sel.sum()), "pcc_plate": float(plate[sel].mean())})
+                rows.append({"fold": f, "subset": sub, "arm": a, "n": int(sel.sum()), "pcc_plate": float(plate[sel].mean()),
+                             "pcc_deg_all_rows": float(deg.mean())})
         print(f"fold {f}: {te.sum()} test rows, {sh.sum()} with a plate-mate, {(sh & two).sum()} of them with n_d >= 2",
               flush=True)
     T = pd.DataFrame(rows); OUT.mkdir(parents=True, exist_ok=True); T.to_csv(OUT / "scores.csv", index=False)
     M = T.groupby(["subset", "arm"])["pcc_plate"].mean().unstack(0)
+    Dg = T[T.subset == "all_shared"].groupby("arm")["pcc_deg_all_rows"].mean()
     for a in ARMS:  # float16 predictions must reproduce the published means
         assert abs(M.loc[a, "all_shared"] - ref[a]["plate"]) < 2e-3, (a, M.loc[a, "all_shared"], ref[a]["plate"])
-    S = T[T.subset == "shared_nd>=2"].pivot(index="fold", columns="arm", values="pcc_plate")
-    gap = S["oracle_uniform"] - S["mlp"]
-    share = {a: {"per_fold": ((S[a] - S["mlp"]) / gap).round(4).tolist(), "mean": float(((S[a] - S["mlp"]) / gap).mean())}
-             for a in ("pool_kta", "ctx_pc", "xpert", "ctx_pc+xpert")}
-    out = {"means": M.round(4).to_dict(), "rows_per_fold": T[T.arm == "mlp"].pivot(index="fold", columns="subset",
-           values="n").to_dict(), "share_of_backbone_to_oracle_distance": share}
+        assert abs(Dg[a] - ref[a]["deg"]) < 2e-3, (a, Dg[a], ref[a]["deg"])
+    share = {}
+    for sub in ("shared_nd>=2", "all_shared"):
+        S = T[T.subset == sub].pivot(index="fold", columns="arm", values="pcc_plate")
+        gap = S["oracle_uniform"] - S["mlp"]
+        share[sub] = {a: {"per_fold": ((S[a] - S["mlp"]) / gap).round(4).tolist(),
+                          "mean": float(((S[a] - S["mlp"]) / gap).mean())} for a in ARMS if a != "mlp"}
+    out = {"means": M.round(4).to_dict(), "pcc_deg_all_rows": Dg.round(4).to_dict(),
+           "rows_per_fold": T[T.arm == "mlp"].pivot(index="fold", columns="subset", values="n").to_dict(),
+           "share_of_backbone_to_oracle_distance": share}
     (OUT / "summary.json").write_text(json.dumps(out, indent=2) + "\n")
     pd.set_option("display.width", 200)
     print("5-fold mean PCC_plate:\n" + M.round(4).to_string())
-    print("share of the backbone-to-oracle distance (rows with n_d >= 2):",
-          {a: round(v["mean"], 3) for a, v in share.items()})
+    print("PCC_DEG, all test rows:\n" + Dg.round(4).to_string())
+    for sub, d in share.items():
+        print(f"share of the backbone-to-oracle distance ({sub}):", {a: round(v["mean"], 3) for a, v in d.items()})
 
 
 if __name__ == "__main__":

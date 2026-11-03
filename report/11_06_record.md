@@ -1208,3 +1208,25 @@ User asked what to keep from the previous Discussion before pushing.
 - "No better than the line's identity" (self-weakening; Results states the similar gain).
 
 **Build:** the main text ends at 52% of p. 11.
+
+### 2026-11-03 05:10 — Oracle in Table 2; ridge penalties back in Method (local, not pushed)
+
+User:
+1. The oracle is not visible in the paper outside the Discussion. Add it and its "fulfilling ratio" to Table 2.
+2. Method misses things, e.g. the ridge penalty.
+3. Are all five Discussion points covered?
+
+- **Table 2.**
+  - New column "gap closed" = (arm − backbone) / (oracle − backbone) on PCC_plate (report §11.1, job 364547).
+  - New oracle row: PCC_plate 0.201, Δ +0.101, 100%. PCC_DEG is shown as "--", and the caption gives 0.628 with the
+    reason (full-weight measured residuals) and "no intervals".
+  - Results §4.1 has one sentence: oracle 0.20, UnDetect closes 60%.
+  - The Discussion now uses the all-plate-mate shares (60% / 86%) instead of n_d ≥ 2 (59% / 85%), so every place
+    quotes the same number.
+- **Method.**
+  - The overview names λ (KRR penalty), a and b (scales), κν (interaction ridge penalty), and says that the
+    hyperparameters are chosen on validation compounds.
+  - §3.4 gives the KRR objective ‖C − K̃α‖² + λ tr(αᵀK̃α).
+  - §3.5 gives the interaction objective with penalty κν‖β‖² before saying it is one linear system per gene.
+  - Nothing else was found missing on re-check against `cache_undetect.py` and `stage2_context.py`.
+- **Build:** no undefined references, no overfull boxes. The text ends at 68% of p. 11.
