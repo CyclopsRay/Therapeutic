@@ -1249,3 +1249,27 @@ Agent's change:
 - Jun's line was worded by the agent ("conceived and supervised the project, set its direction and guided the
   discussions"). Jun or the user to confirm.
 - Main text now ends at 81% of p. 11. The acknowledgements count towards the 10 pages, which leaves about 10 lines.
+
+### 2026-11-03 05:30 — Fig. 2a/b fold dots drawn; audit of this chat's revisions against the paper (pushed)
+
+User:
+- Why does Fig. 2a have no fold dots?
+- Check that every revision discussed in this chat is in the paper.
+
+**Cause.** The agent had only put the fold dots in Hanzhe's brief and the caption todo (02:30) and never drew them.
+
+**Fig. 2.** `scripts/figures/fig2_benchmark.py` now draws them:
+- (a): five folds as a strip below each row, filled for with-drug and open for drug-zeroed. Published values come
+  from `primary_comparisons.csv` fold_k_full / fold_k_comparator; ours from `final_cpu/scores.csv`. The fold spread
+  (about 0.007) is smaller than the markers, hence the strip.
+- (b): fold dots at the bar ends (`plate_baseline/summary.json`).
+- The source CSV now has per-fold rows.
+- The caption says "(small dots below each row: folds)" and "(dots: folds)". The todo is back to "Hanzhe to redraw".
+  BRIEF is updated.
+
+**Audit** (grep over all sections for every agreed item from 2026-11-02 evening to now):
+- All text revisions are present.
+- Remaining slips, fixed: two "leave-one-out" in the appendix controls table → "leave-one-compound-out".
+- No leftover user comments, "prop:coverage", old penalty c, PC count K or scale s.
+
+**Build:** no undefined references. The text ends at 81% of p. 11.

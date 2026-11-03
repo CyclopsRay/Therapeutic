@@ -2,8 +2,10 @@
 
 (a) PCC_DEG of each model with its drug input and with it zeroed: the seven published models (Bai et al. 2026, fold
     means) and UnDetect (compound lane on / off; off = its drug-free backbone); line = the plate-response
-    baseline (drug-free MLP line removed 2026-11-02, user: UnDetect's drug-zeroed point marks the drug-free level). (b) Plate-response baseline on test samples with and without a training plate-mate,
-    next to the cell-line mean. (c) Plate-centred score PCC_plate: baseline, drug-free MLP, plate co-membership
+    baseline (drug-free MLP line removed 2026-11-02, user: UnDetect's drug-zeroed point marks the drug-free level);
+    small dots = folds (user 2026-11-03; published folds from primary_comparisons.csv fold_k_full / fold_k_comparator).
+    (b) Plate-response baseline on test samples with and without a training plate-mate, next to the cell-line mean;
+    small dots = folds. (c) Plate-centred score PCC_plate: baseline, drug-free MLP, plate co-membership
     kernel, chemistry kernel, UnDetect, and XPert / TranSiGen with and without their drug input; dots = folds. (d) DeepCE's own benchmark (published split, per-signature Pearson):
     values reported by Pham et al. 2021 (open dots) next to our runs (filled).
 Sources: repro/dpb/upstream/.../statistics/{primary_comparisons,full_vs_mlp}.csv (drug-perturbation-benchmark
@@ -47,6 +49,14 @@ rows = [{"panel": "a", "model": m, "with_drug": z.loc[m, "full_mean"], "drug_zer
 rows.append({"panel": "a", "model": "UnDetect", "with_drug": fin_deg["ctx_pc"], "drug_zeroed": fin_deg["mlp"]})
 rows.append({"panel": "a", "model": "UnDetect\n+ XPert", "with_drug": fin_deg["ctx_pc+xpert"], "drug_zeroed": np.nan})
 A = pd.DataFrame(rows)
+FOLDS = {}  # model -> (with-drug folds, drug-zeroed folds)
+for m in z.index:
+    FOLDS[m] = tuple(np.array([z.loc[m, f"fold_{i}_{c}"] for i in range(5)], float) for c in ("full", "comparator"))
+fin_f = fin.pivot(index="fold", columns="arm", values="deg").sort_index()
+FOLDS["UnDetect"] = (fin_f["ctx_pc"].to_numpy(), fin_f["mlp"].to_numpy())
+FOLDS["UnDetect\n+ XPert"] = (fin_f["ctx_pc+xpert"].to_numpy(), np.full(5, np.nan))
+for m, (fw, fz) in FOLDS.items():
+    rows += [{"panel": "a", "model": m, "fold": i, "with_drug": float(fw[i]), "drug_zeroed": float(fz[i])} for i in range(5)]
 
 fig = plt.figure(figsize=(6.5, 4.8))
 TOP = 3.0 / 4.8  # panels a-c keep their 6.5 x 3.0 layout in the upper part; d below
@@ -61,6 +71,10 @@ d = fig.add_axes([0.335, 0.085, 0.60, 0.25])
 y = np.arange(len(A))
 for k, r in A.iterrows():
     col = OURS if r.model.startswith("UnDetect") else INK2
+    fw, fz = FOLDS[r.model]  # folds in a strip just below the row: the fold spread is smaller than the markers
+    a.scatter(fw, np.full(5, k - 0.3), s=6, color=col, zorder=5, lw=0)
+    if np.isfinite(fz).all():
+        a.scatter(fz, np.full(5, k - 0.3), s=6, facecolor="white", edgecolor=col, zorder=5, lw=0.6)
     if np.isfinite(r.drug_zeroed):
         a.plot([r.drug_zeroed, r.with_drug], [k, k], color=GRID, lw=2, zorder=1, solid_capstyle="round")
         a.scatter(r.drug_zeroed, k, s=32, facecolor="white", edgecolor=col, lw=1.1, zorder=4)
@@ -86,14 +100,19 @@ names = [f"plate-mate ({share:.0%})", f"no plate-mate ({1 - share:.0%})", "cell-
 vals = [lk.plate_mean_shared, lk.plate_mean_unshared, lk.cell_mean]
 yb = np.arange(3)[::-1]
 b.barh(yb, vals, height=0.62, color=[PLATE, PLATE, MUTED], zorder=2)
-for k, v in zip(yb, vals):
-    b.text(v + 0.012, k, f"{v:.2f}", ha="left", va="center", fontsize=8, color=INK)
+LKF = pd.DataFrame(json.loads((RES / "plate_baseline/summary.json").read_text()))
+fb = [LKF.plate_mean_shared.to_numpy(), LKF.plate_mean_unshared.to_numpy(), LKF.cell_mean.to_numpy()]
+for k, fv in zip(yb, fb):
+    b.scatter(fv, np.full(len(fv), k), s=5, color=INK, zorder=3, lw=0)
+for k, v, fv in zip(yb, vals, fb):
+    b.text(fv.max() + 0.012, k, f"{v:.2f}", ha="left", va="center", fontsize=8, color=INK)
 b.set_yticks(yb, names, fontsize=8)
 b.set_xlim(0, 0.75); b.set_xlabel(r"PCC$_\mathrm{DEG}$", fontsize=8.5, labelpad=1)
 b.grid(axis="x", color=GRID, lw=0.6); b.set_axisbelow(True)
 b.spines["left"].set_visible(False); b.tick_params(axis="y", length=0)
 fig.text(0.475, 1 - TOP + 0.94 * TOP, "b", fontsize=11, fontweight="bold", ha="left", va="center")
 rows += [{"panel": "b", "group": g, "pcc_deg": v} for g, v in zip(names, vals)]
+rows += [{"panel": "b", "group": g, "fold": i, "pcc_deg": float(fv[i])} for g, fv in zip(names, fb) for i in range(len(fv))]
 
 # (c) plate-centred score: what distinguishes a compound from its plate-mates
 # 2026-11-02 user: plate-response baseline (0 by construction) dropped, rows sorted, highest on top,
