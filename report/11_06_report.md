@@ -759,3 +759,28 @@ Same runs and tags as §10.1 (the other arms are reproduced exactly). At a = 0, 
   −0.00003).
 - On sparse grids, a > 0 in 66–75% of cases, and the residual Pearson rises by +0.006 to +0.025 (CI > 0 except k = 25 at
   5 µM). The full Pearson falls (−0.001 to −0.024) because b = 1 keeps the per-line term at full scale while g is added.
+
+## 11. Oracle reference on the final drug-blind run (job 364531; `scripts/oracle_final.py`, no training; 2026-11-03)
+
+The uniform oracle of `10_30_report.md` §6.2 recomputed on the final backbone (`cache_v1`). Each test sample is
+predicted by the backbone plus the mean backbone residual of the same compound's other test samples in the fold
+(other cell lines). It uses test responses, so it is a reference point and not a model, and it is not an upper bound
+(§6.2: a control-weighted oracle was +0.004 above it). PCC_plate on rows with a training plate-mate whose compound has
+at least two test samples: 14,374 / 14,040 / 13,714 / 13,849 / 14,441 rows (99.3% of all plate-mate rows). The arms
+are the `final_cpu` predictions. On all plate-mate rows they reproduce `final.json` (check in the script; the oracle
+there falls back to the backbone on single-sample compounds). Ensemble = 0.6 UnDetect + 0.4 XPert.
+
+| arm | PCC_plate (n_d ≥ 2) | share of the backbone → oracle distance, per fold | mean share |
+|---|---|---|---|
+| backbone (drug-free MLP) | 0.0993 | | |
+| UnDetect without interaction (pool_kta) | 0.1545 | 0.568 / 0.544 / 0.538 / 0.524 / 0.544 | 0.543 |
+| XPert (released) | 0.1564 | 0.528 / 0.529 / 0.653 / 0.596 / 0.528 | 0.567 |
+| UnDetect (ctx_pc) | 0.1595 | 0.619 / 0.595 / 0.592 / 0.566 / 0.591 | 0.592 |
+| UnDetect + XPert | 0.1855 | 0.808 / 0.801 / 0.917 / 0.904 / 0.836 | 0.853 |
+| oracle, uniform over the compound's other lines | 0.2008 | | |
+
+- An oracle that knows each test compound's responses in other cell lines reaches 0.201.
+- UnDetect covers 59% of the distance from the drug-free backbone to that oracle, XPert 57%, and their ensemble 85%.
+- These are descriptive shares; no bootstrap was run.
+- Source: `/nfs-stor/yuqi.lei/Therapeutic/results/sdst_hybrid/oracle_final/{scores.csv, summary.json}`; log
+  `logs/oracle-final-364531.out`.

@@ -1119,3 +1119,92 @@ User asked for three changes:
     holds.
 - **Build** (tectonic): no undefined references. The main text ends on p. 11 (= title page + 10). Discussion now
   starts on p. 9.
+
+### 2026-11-03 04:45 — Method rebuilt around one closed-form block; Proposition demoted; Results fixes; Discussion rewritten; oracle recomputed (local, not pushed)
+
+**User (03:40–04:10):**
+- §3.3: is the Proposition needed?
+- Re-read §3–§4 for readability, AI style, notation and agreement with experiments.
+- E: "decreasing trend" is fine.
+- F: simplify, few numbers.
+- Write the closed-form solution in the Method overview and explain each part in its subsection, with all indices
+  unified and disjoint.
+- Discussion: five highlights.
+
+The agent's answers were accepted ("ok"):
+- Proposition: demoted, with the reasons given in chat.
+- Discussion: the five points reframed (see below).
+
+**Agent findings in §3–§4, now fixed:**
+- A: "recover both metrics / kernel transfer remains ahead" was wrong. Transfer alone vs the residual head is +0.003 with
+  no fold CI excluding 0. Now "keep the compound signal and recover the context; UnDetect remains ahead on PCC_plate"
+  (+0.008, 5/5 folds > 0, CI 3/5).
+- B: "mainly because" restored.
+- C, D: Level-5 vs Tahoe wording.
+- E: "decreases as coverage grows".
+- F: one sentence. The [0.3, 0.5) bin (+0.015) had been omitted.
+- G: "mostly well-studied ones" removed (no evidence); coverage 36% / 23% now has a SRC (§10.3, 2,957 and 1,937 of
+  8,276).
+- H: "gating" → rescaling.
+- "28 of 28 LINCS evaluations" aligned with the frozen abstract.
+
+**Notation, now disjoint:**
+- Indices: i sample, j gene (G = 978), d compound, ℓ line, v view.
+- Sets: 𝒯, D, D_ℓ.
+- Number of principal components K → q; the kernel keeps K. This is also changed in the appendix grid table, the
+  "κ = 1, q = 20" sentence and the controls caption.
+- Interaction scale s → ν; s stays the dose.
+- Proposition indices i, j, g, D → d, φ, Δ.
+- LOO → leave-one-compound-out.
+
+**Method:**
+- §3.1 is an alignat block: backbone, kernel, transfer, interaction (β_j = (Φ_jᵀΦ_j + κνI)⁻¹Φ_jᵀ(r_·j − ũ_·j),
+  Φ_j = diag(ũ_·j)[1, Z]), then the prediction eq:predict, with one sentence per stage.
+- This matches `stage2_context.gate_fit` (ridge of r − u on u·[1, Z], penalty on all q + 1 coefficients) and
+  `cache_undetect` (KRR without intercept, one λ, KTA weights normalised to sum 1, fused kernel normalised).
+- The Proposition became a 4-sentence argument in §3.3.
+- Intro contribution 2 no longer cites prop:coverage.
+
+**Oracle (job 364531; report §11):**
+- On rows with a plate-mate and n_d ≥ 2 (99.3% of plate-mate rows): backbone 0.099, UnDetect 0.160, XPert 0.156,
+  ensemble 0.186, uniform oracle 0.201.
+- Share of the backbone → oracle distance: UnDetect 59%, XPert 57%, ensemble 85%.
+- The user's "theoretical upper bound 0.20" is not an upper bound. It uses test responses, and a control-weighted
+  oracle was higher (§6.2). The paper calls it an oracle.
+- The ensemble value is 0.186 (the user remembered 0.183).
+
+**Discussion (user's five points, reframed by the agent and agreed):**
+1. Only UnDetect beats the drug-free network on the drug-blind benchmark (scoped; DeepCE does beat the mean on its own
+   benchmark). "Just a closed-form model" is phrased as "a closed-form model suffices". Oracle headroom as above.
+2. Modalities are framed as "the gain grows with the information available about a compound" (§10.3), and Cell
+   Painting as the measurable view for any new compound. The structure-only stratum, where XPert leads UnDetect by
+   0.013, is not made a comparison.
+3. Cell Painting conditions. Correction: the profiles are A549, 48 h, 10 µM, not 24 h. Framed as "one A549 profile
+   transfers to 164 lines; condition-matched morphological profiles are the next input", not "higher resolution".
+4. PPI: "only degree, stop trying" was not used (one experiment; graph = degree stays an open hypothesis). Now:
+   calibrate network priors against rewired nulls, and what the PPI kernel adds does not depend on wiring beyond
+   degree.
+5. "Linear beats DL" is inaccurate: the backbone is a 14.4M-parameter MLP and KRR is nonlinear in compound features.
+   Now "structure matters more than capacity", citing Ahlmann-Eltze et al. (bioRxiv 2024, Nat Methods 2025; the
+   paper the user recalled, scGPT/scFoundation/GEARS vs linear) and Wong 2025.
+
+**Build** (tectonic): no undefined references. The main text ends on p. 11 at about 42% of the text block (y = 450 pt
+from the bottom), so there is about half a page of slack.
+
+### 2026-11-03 05:05 — Discussion: items kept from the old version; pushed
+
+User asked what to keep from the previous Discussion before pushing.
+
+**Restored:**
+- The plate explanation as the opening sentence. Contribution 1 was otherwise absent from the Discussion.
+- A cross-line transfer paragraph (28/28, Tahoe sparsity). The abstract cites cross-line transfer, but the new
+  Discussion had nothing on it.
+- "Ensemble best in every coverage group" (§10.3: blend − XPert > ctx_pc − XPert in all four strata).
+- The screening tie-in for Cell Painting.
+
+**Left out:**
+- The same-input numbers (they are in the table).
+- The single-dose caveat (stated in §2).
+- "No better than the line's identity" (self-weakening; Results states the similar gain).
+
+**Build:** the main text ends at 52% of p. 11.
