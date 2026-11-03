@@ -1314,3 +1314,36 @@ learning curve v5_lc*, 2K ladder) and unapproved items moved to `PLAN.md` Phase 
   drug-blind and DeepCE splits has not been done.
 
 Triage proposal sent to the user; decisions pending (next entry).
+
+### 2026-11-03 06:45 — Review round A applied (paper b9a7ed6, pushed)
+
+User: A 档全做；Cell Painting 两句也改；B1 先问：如果要 norm PCC_plate 原始的 0.10，怎么做？
+
+Edits (all numbers already in reports; `% SRC:` added where new):
+- Results: rows without a training plate-mate now "0.536 → 0.574, above XPert at 0.565" (§4 table, released preds).
+  Plate-mate sentence rewritten as complementarity: XPert stronger with few plate-mates (−0.016 / −0.040 / −0.029 /
+  −0.013 for 1–20), UnDetect on the 70% with > 20 (§10.6). DeepCE: "(0.511 against 0.491)".
+- Table 2: "oracle" → "reference", column "gap closed" → "share". Caption: weight chosen on validation raised it by
+  0.002 in an earlier run (§1: 0.2002 → 0.2020). The caption no longer quotes the reference's PCC_DEG 0.628 (it is
+  defined for PCC_plate only). Decision: no need to quote a number for a metric the reference is not defined for.
+- Discussion: "The compound-specific signal is large" deleted; "closes 60% of this distance" → "attains 60% of this
+  gain without any measurement of the compound". Cell Painting: "XPert is stronger with structure alone, UnDetect with
+  Cell Painting, and their ensemble is best in every group" (§10.3: structure only ctx_pc − XPert −0.0134
+  [−0.0176, −0.0093]); "can be measured for any new compound" → "can be measured for a new compound in one imaging assay".
+- Method: the RKHS bound is now stated as a bound ("the largest effect a compound can receive shrinks with the views it
+  lacks"; after normalisation "the bound is the same for every compound"). Related designs: Molina & Zhang and
+  Svensson et al. transfer a compound's measured responses; for an unseen compound UnDetect predicts these terms from
+  its views.
+- Intro: backbone sentence split into the two variants; "not shrunk towards zero" → "keep unit self-similarity".
+  Data: PCC_DEG "across all 978 genes" (checked: Bai et al.'s `evaluate_all.py` uses x_deg = treated − control,
+  all 978 genes).
+- Appendix: backbone-seed sentence (`10_30_report.md` §5.5, v1 configuration, labelled as earlier configuration);
+  Table 10 caption: PertDiT −0.01248, quoted as 0.012.
+- **Not changed:** the abstract's "at most 0.012". `primary_comparisons.csv` gives PertDiT Full − Zero = −0.012476,
+  which rounds to 0.012; the reviewer compared it with the 4-decimal table value −0.0125.
+
+Build (tectonic): no undefined references. The first pass ended the text on the last line of p. 11, so the new
+sentences were shortened. Now the references start on p. 11 after the declarations, about 7 lines of slack left
+for Jun's acknowledgements.
+
+B1 (within-plate contrast metric): method question answered in chat; not run, awaiting the user's go.
