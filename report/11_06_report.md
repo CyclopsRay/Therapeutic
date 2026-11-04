@@ -989,3 +989,41 @@ units, 1,525–1,575 plates, 1,617–1,626 compounds). Schemes: resample compoun
 - Plate-clustered intervals are narrower than or equal to the compound intervals for every quantity here.
 - Negative: under two-way clustering the lead of UnDetect over XPert on PCC_within has its interval above zero in 4 of
   5 folds (one fold's lower bound −0.0004); ensemble − ctx_pc is above zero in 4/5 under compound and two-way.
+
+## 17. Every model by view coverage and by plate-mate count, all three scores (job 369388; no training; 2026-11-04)
+
+Script `scripts/strata_all_models.py` (`slurm/strata_all_models.sbatch`, cn-06, numpy 1.26.4, seed 0). Strata and
+plate means as §10.3 / §10.6; PCC_within from §12 units (no CIGER/MultiDCP there); PRnet/PertDiT have no per-sample
+predictions on this scale. Five folds pooled; bootstrap over test compounds. Output
+`/nfs-stor/yuqi.lei/Therapeutic/results/sdst_hybrid/strata_all/{strata.csv, platemates_within.csv, summary.json}`;
+log `/nfs-stor/yuqi.lei/Therapeutic/logs/strata-all-models-369388.out`.
+
+| stratum | metric | n cpds | CIGER | MultiDCP | DeepCE | TranSiGen | XPert | pub. MLP | chem kernel | multi-view | UnDetect | ensemble |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| structure only | PCC_DEG | 4,740 | 0.248 | 0.261 | 0.441 | 0.627 | 0.644 | 0.653 | 0.657 | 0.655 | 0.656 | 0.665 |
+| structure only | PCC_plate | 4,693 | 0.004 | 0.022 | 0.054 | 0.124 | 0.129 | 0.091 | 0.117 | 0.113 | 0.116 | 0.145 |
+| structure only | PCC_within | 4,615 | – | – | 0.017 | 0.061 | 0.068 | 0 | 0.066 | 0.065 | 0.071 | 0.083 |
+| pharmacology only | PCC_DEG | 1,599 | 0.263 | 0.248 | 0.392 | 0.617 | 0.631 | 0.636 | 0.644 | 0.649 | 0.651 | 0.660 |
+| pharmacology only | PCC_plate | 1,591 | 0.015 | 0.019 | 0.050 | 0.139 | 0.150 | 0.094 | 0.128 | 0.143 | 0.146 | 0.175 |
+| pharmacology only | PCC_within | 1,575 | – | – | 0.035 | 0.091 | 0.103 | 0 | 0.086 | 0.106 | 0.112 | 0.128 |
+| Cell Painting only | PCC_DEG | 579 | 0.195 | 0.257 | 0.347 | 0.592 | 0.605 | 0.620 | 0.624 | 0.634 | 0.636 | 0.648 |
+| Cell Painting only | PCC_plate | 578 | 0.013 | 0.038 | 0.066 | 0.165 | 0.172 | 0.123 | 0.147 | 0.200 | 0.209 | 0.223 |
+| Cell Painting only | PCC_within | 573 | – | – | 0.030 | 0.074 | 0.079 | 0 | 0.080 | 0.153 | 0.159 | 0.152 |
+| both | PCC_DEG | 1,358 | 0.245 | 0.251 | 0.356 | 0.605 | 0.625 | 0.624 | 0.632 | 0.645 | 0.647 | 0.660 |
+| both | PCC_plate | 1,355 | 0.016 | 0.028 | 0.058 | 0.168 | 0.195 | 0.115 | 0.152 | 0.207 | 0.215 | 0.239 |
+| both | PCC_within | 1,353 | – | – | 0.034 | 0.095 | 0.120 | 0 | 0.095 | 0.165 | 0.170 | 0.175 |
+| all | PCC_within | 8,116 | – | – | 0.027 | 0.079 | 0.092 | 0 | 0.080 | 0.111 | 0.117 | 0.126 |
+
+UnDetect − XPert [95% CI]: structure only PCC_DEG +0.0115 [0.0098, 0.0131], PCC_plate −0.0134 [−0.0176, −0.0093],
+PCC_within +0.0031 [−0.0009, +0.0073]; pharmacology only PCC_within +0.0090 [−0.0007, 0.0200]; Cell Painting only
+PCC_within +0.0803 [0.0625, 0.0994]; both +0.0502 [0.0393, 0.0612]. Ensemble − UnDetect on PCC_within: +0.0124,
++0.0157, **−0.0069** (Cell Painting only), +0.0046.
+
+- With structure alone UnDetect is above every published model on PCC_DEG and level with XPert on PCC_within, but on
+  PCC_plate **below both TranSiGen (0.124) and XPert (0.129)**.
+- The ensemble is best on PCC_within in 3 of 4 strata (not Cell Painting only).
+
+PCC_within by the plate's number of training rows (UnDetect vs XPert): (0,2] 0.143 vs 0.098 (+0.046 [0.033, 0.058]);
+(2,5] 0.126 vs 0.082; (5,10] 0.132 vs 0.090; (10,20] 0.136 vs 0.096; (20,50] 0.145 vs 0.109; >50 0.093 vs 0.083
+(+0.010 [0.005, 0.016]); 0 plate-mates 0.189 vs 0.127. All CIs > 0: the small-plate deficit on PCC_plate (§10.6) does
+not appear on PCC_within.

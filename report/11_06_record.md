@@ -1690,3 +1690,40 @@ per fold, as for PCC_plate. Coverage reported: plates and units kept, and the sh
   weight 0.28–0.31 in every fold (cache_v1 summary.json), so Δ is invertible; code clamps the diagonal at 1e-12.
 - T3: constant-prediction score stated as a convention (main text + App. A.11). Clustered bootstrap run (report §16,
   job 369274): plate-clustered intervals keep every PCC_within claim 5/5; two-way: UnDetect − XPert 4/5.
+
+### 2026-11-04 22:00 — Decisions on the AI review round 2; two analyses submitted
+
+User decisions: PCC_within becomes the main compound-specific score in the text (abstract frozen, Fig. 2b stays
+PCC_plate); Table 15 (compact) into the main text, framed: with structure alone UnDetect beats the published models
+except XPert, XPert slightly ahead; with more views UnDetect overtakes XPert; the ensemble is far above all. Scope
+paragraph (repurposing: annotations known; new chemistry: one Cell Painting assay is a cheap first experiment). No
+abstract change (registered). Fig. 1 post-hoc note: not added (no performance claim there). 86% checked: 86.1–86.6%.
+
+1. `scripts/strata_all_models.py` (`slurm/strata_all_models.sbatch`): every model with released per-sample
+   predictions (CIGER, MultiDCP, DeepCE, TranSiGen, XPert, published MLP; PRnet/PertDiT not available on this scale) by
+   view-coverage stratum on PCC_DEG, PCC_plate, PCC_within; PCC_within by plate-mate bin (Table 16 column). Needed to
+   state "beats N published models with structure alone" on an exact metric.
+2. **Within-plate self-retrieval (design fixed before the run; results to be discussed 2026-11-05):**
+   `scripts/within_plate_retrieval.py`. Units and centring as PCC_within (plates with >= 2 test compounds, averaged per
+   (plate, compound)); for each compound, rank of its own measured signature among the plate's test compounds by
+   correlation with its predicted signature. Metrics: top-1 (chance 1/n), reciprocal rank, normalised rank (chance
+   0.5); overall and by plate size (2, 3–5, 6–10, >= 11); arms as PCC_within plus CIGER/MultiDCP; bootstrap over test
+   compounds. Constant-within-plate predictions score exactly chance (backbone, XPert zeroed = negative controls).
+   Reading rule: a screening-relevant result for the paper or rebuttal only if UnDetect is above chance with CI in the
+   overall group; its comparison with XPert is reported either way. Not circular: no MoA labels are used as targets.
+
+### 2026-11-04 23:30 — Round-2 edits applied (paper pushed together with T1–T3)
+
+- Job 369388 (report §17) changed the planned Table 15 framing: "beats 6/7 deep models with structure alone" is not
+  supported as stated (only 5 published models have per-sample predictions; on PCC_plate TranSiGen is also ahead with
+  structure alone). Used instead, on the main score: with structure alone UnDetect is level with XPert on PCC_within
+  (0.071 vs 0.068, CI spans 0) and above TranSiGen/DeepCE; above all five on PCC_DEG; up to 2x XPert with Cell
+  Painting; ensemble helps most with structure alone (+0.012), not best in the Cell Painting-only stratum.
+- Paper: new main-text Table 5 (PCC_within by coverage) + paragraph in §3.4; Discussion paragraph on coverage merged
+  with a scope paragraph (repurposing; Cell Painting as a cheap first experiment; structure-only level with XPert);
+  "structure matters more than capacity" sentence dropped (in §3.4). PCC_within named the main compound-specific
+  score (setup, §3.3 paragraph order, intro summary incl. DeepCE same-input MLP 0.544); selection metric stated
+  (Method, setup); "standard score"/PCC_DEG qualifiers; "compared with"; American spelling throughout; App. Table 16:
+  PCC_within leads XPert in every plate-mate bin; Δ invertibility moved to App. A.1. Abstract unchanged.
+- Build: main.tex References p. 11 line 41/45 (4 filler lines still fit on p. 11); bioRxiv PDF rebuilt.
+- Job 369389 (self-retrieval) completed; outputs in results/sdst_hybrid/within_retrieval/; to be read on 2026-11-05.
