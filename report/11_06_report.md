@@ -936,3 +936,28 @@ UnDetect > XPert for 49% of them, > chemistry kernel for 72%. Ranked by min(UnDe
 
 Decision (record 09:10): keep mitoxantrone as the Fig. 1 query and Fig. 3c case: third of 337, most rows of the top
 three, annotated target and mechanism shared with daunorubicin.
+
+## 15. Intervals for Fig. 3b: response similarity of chemically unlike pairs by view bin (job 368034; no training)
+
+`scripts/view_bins_ci.py` (`slurm/view_bins_ci.sbatch`, about 3 min) rebuilds the Part A pairs of
+`analyze_sdst_compounds.py --final` and reproduces every bin mean and count of `compound_analysis_final/summary.json`
+exactly (asserted). 95% intervals: 1,000 compound-level bootstrap replicates (compounds drawn with replacement; a pair
+weighted by the product of its compounds' draw counts), seed 0. Source:
+`results/sdst_hybrid/compound_analysis_final/view_bins_ci.json`; log `logs/view-ci-368034.out`.
+
+| view (chemically unlike pairs, Tanimoto < 0.25) | bin | response similarity | 95% interval | pairs | compounds |
+|---|---|---|---|---|---|
+| targets | 0 | 0.004 | [0.003, 0.006] | 3,328,114 | 2,599 |
+| targets | (0, 0.5) | 0.030 | [0.022, 0.039] | 15,010 | 1,763 |
+| targets | ≥ 0.5 | 0.059 | [0.047, 0.072] | 11,803 | 2,210 |
+| mechanism | 0 | 0.004 | [0.003, 0.006] | 3,327,712 | 2,599 |
+| mechanism | (0, 0.5) | 0.024 | [0.011, 0.038] | 4,599 | 1,310 |
+| mechanism | ≥ 0.5 | 0.051 | [0.042, 0.060] | 22,616 | 2,237 |
+| Cell Painting | < 0.3 | −0.003 | [−0.005, −0.001] | 1,371,652 | 1,798 |
+| Cell Painting | [0.3, 0.5) | 0.060 | [0.053, 0.068] | 229,470 | 1,793 |
+| Cell Painting | [0.5, 0.7) | 0.121 | [0.101, 0.145] | 4,021 | 1,302 |
+| Cell Painting | ≥ 0.7 | 0.287 | [0.192, 0.378] | 99 | 141 |
+| chemical analogues (Tanimoto ≥ 0.6) | | 0.165 | [0.138, 0.195] | 1,718 | 1,276 |
+
+- The Cell Painting ≥ 0.7 bin rests on 99 pairs of 141 compounds; its interval [0.19, 0.38] lies above the analogues'
+  [0.14, 0.20], so "Cell-Painting-similar unlike pairs respond more alike than chemical analogues" holds with intervals.

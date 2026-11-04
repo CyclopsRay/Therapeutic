@@ -1573,3 +1573,16 @@ per fold, as for PCC_plate. Coverage reported: plates and units kept, and the sh
   Build: References still at line 46/50 of p. 11.
 - Fig. 1: Fusion module bottom-aligned with the Similarity kernels module (gap to Kernel regression = one gutter;
   fused kernel level with the front view kernel); the free space moves to the top-right corner.
+
+### 2026-11-04 10:30 — Fig. 3 revision A–E (user: "let's try")
+
+- A: compound-bootstrap 95% intervals for (b) and the analogue line (job 368034, report §15); main text adds the
+  intervals to "0.29 vs 0.17".
+- B: (d) fourth strip, the chemistry kernel's prediction while held out; text: UnDetect r 0.78–0.89 vs chemistry
+  −0.50 to 0.67 with the measured signature.
+- C: view names as Fig. 1 (Structure, Protein targets, Mechanism, Cell Painting) with the Fig. 1 view icons in the (a)
+  key and by the (b) group names.
+- D: the "all four views" line in (a) dark grey dashed (red was both the Structure view and UnDetect); (d) keeps the
+  blue-down / red-up scale (direction of change is the point of (d); colour key at the bottom) — the user may revisit.
+- E: (d) structures drawn on one scale per pair, widths by molecular extent, 0.14 in apart (no touching; vorinostat no
+  longer tiny).

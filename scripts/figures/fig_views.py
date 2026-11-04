@@ -28,14 +28,15 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from style import DIV_NEG, DIV_POS, GRID, INK, INK2, LINE, VIEW, panel, plt, save  # noqa: E402
 from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
-from fig1_cards import molecule  # noqa: E402
+from fig1_cards import ICON, molecule  # noqa: E402
 
 RESD = Path("/nfs-stor/yuqi.lei/Therapeutic/results/sdst_hybrid")
 RES = RESD / "compound_analysis_final"
 CASE = RESD / "case_study"
 NGENES = 30
 CMAP = LinearSegmentedColormap.from_list("div", [DIV_NEG, "#efeeeb", DIV_POS])
-VNAME = {"chem": "Chemistry", "tgt": "Targets", "moa": "Mechanism", "morph": "Cell Painting"}
+VNAME = {"chem": "Structure", "tgt": "Protein targets", "moa": "Mechanism", "morph": "Cell Painting"}   # as Fig. 1
+UND, CHEMK = "#f0807a", "#6b7f99"            # UnDetect and the chemistry kernel, as in Fig. 2
 # Fig. 2 colours (scripts/figures/fig2_benchmark.py TOOL)
 MODEL = [("mlp_bai", "Drug-free MLP", "#8a8984"), ("pool_chem", "Chemistry kernel", "#6b7f99"),
          ("xpert", "XPert", "#8ec5ea"), ("ctx_pc", "UnDetect", "#f0807a")]
@@ -50,12 +51,19 @@ EX = json.loads((RES / "example_pairs.json").read_text())
 SIG = np.load(CASE / "signatures.npz")
 SC = pd.read_csv(CASE / "scores.csv")
 
-fig = plt.figure(figsize=(6.5, 4.5))
+FW_, FH_ = 6.5, 4.5
+fig = plt.figure(figsize=(FW_, FH_))
 gs = fig.add_gridspec(1, 3, width_ratios=[1.0, 1.5, 0.95], wspace=0.42, left=0.115, right=0.99, top=0.93,
                       bottom=0.61)
 a, b, c = (fig.add_subplot(gs[0, k]) for k in range(3))
 DH = 0.50 * 4.5                              # height of panel d in inches (data units = inches)
 d = fig.add_axes([0.0, 0.0, 1.0, 0.50]); d.set_xlim(0, 6.5); d.set_ylim(0, DH); d.axis("off")
+ov = fig.add_axes([0, 0, 1, 1], zorder=10); ov.set_xlim(0, FW_); ov.set_ylim(0, FH_); ov.axis("off")   # icons, inches
+
+
+def inch(ax, x, y):
+    """Data point of ax -> figure inches (overlay coordinates)."""
+    return ax.transData.transform((x, y)) / fig.dpi
 
 # (a) view ablation: gain over the backbone, five folds
 F = []
@@ -81,43 +89,54 @@ pj = PJ[PJ.set == "permjoint"].groupby("seed").gain.mean()
 a.barh(0, pj.mean(), xerr=pj.std(ddof=1), height=0.30, color=INK2, error_kw=ERR, zorder=2)
 rows.append({"panel": "a", "kind": "permjoint", "view": "all", "gain_mean": pj.mean(), "gain_sd": pj.std(ddof=1)})
 yt.append(0); yl.append("all\npermuted")
-a.axvline(full.mean(), color=DIV_POS, lw=1.0, zorder=3)
-a.text(full.mean() - 0.002, -0.40, "all four", color=DIV_POS, fontsize=6, ha="right", va="bottom")
+a.axvline(full.mean(), color=INK2, lw=0.9, ls="--", zorder=3)
+a.text(full.mean() - 0.002, -0.40, "all four views", color=INK2, fontsize=6, ha="right", va="bottom")
 a.axvline(0, color=INK2, lw=0.6, zorder=3)
 a.set_yticks(yt, yl, fontsize=7.5, linespacing=0.9)
 a.set_ylim(-0.45, 3.7); a.set_xlim(-0.006, 0.072); a.set_xticks([0, 0.03, 0.06])
 a.set_xlabel(r"gain in PCC$_\mathrm{plate}$", fontsize=8, labelpad=1)
 a.grid(axis="x", color=GRID, lw=0.6); a.set_axisbelow(True)
 a.spines["left"].set_visible(False); a.tick_params(axis="y", length=0, pad=1)
-for v, nm in VNAME.items():
-    a.barh([0], [0], color=VIEW[v], label=nm)
-a.legend(loc="lower left", bbox_to_anchor=(-0.05, 1.0), ncol=2, frameon=False, fontsize=5.6, handlelength=0.9,
-         handletextpad=0.3, columnspacing=0.6, borderaxespad=0.1)
+pa = a.get_position()                         # view key: icon + name in the view colour, as in Fig. 1
+for j, (v, nm) in enumerate(VNAME.items()):
+    kx_, ky_ = pa.x0 * FW_ - 0.02 + (j % 2) * 0.86, pa.y1 * FH_ + 0.19 - (j // 2) * 0.14
+    ICON[v](ov, kx_, ky_, 0.085)
+    ov.text(kx_ + 0.07, ky_, nm, fontsize=5.8, color=INK, ha="left", va="center")
 panel(a, "a", -0.40)
 
 # (b) response similarity by view similarity, chemically unlike pairs
-groups = [("Targets", "tgt", ["0", "<.5", "≥.5"]), ("Mechanism", "moa", ["0", "<.5", "≥.5"]),
+CIF = RES / "view_bins_ci.json"               # compound-bootstrap 95% intervals (scripts/view_bins_ci.py)
+CI = {(r["view"], r["bin"]): r["ci95"] for r in json.loads(CIF.read_text())["bins"]} if CIF.exists() else {}
+groups = [("Protein targets", "tgt", ["0", "<.5", "≥.5"]), ("Mechanism", "moa", ["0", "<.5", "≥.5"]),
           ("Cell Painting", "morph", ["<.3", ".3", ".5", "≥.7"])]
-x0, ticks, labels = 0.0, [], []
+x0, ticks, labels, GROUP_ICON = 0.0, [], [], []
 for name, key, labs in groups:
     bins = S["view_bins_chem_low"][key]; xs = x0 + np.arange(len(bins))
-    b.bar(xs, [r["resp_mean"] for r in bins], width=0.75, color=VIEW[key], zorder=2)
-    for xx, r in zip(xs, bins):
+    mu = np.array([r["resp_mean"] for r in bins])
+    ci = np.array([CI.get((key, r["bin"]), [m_, m_]) for r, m_ in zip(bins, mu)])
+    b.bar(xs, mu, width=0.75, color=VIEW[key], zorder=2)
+    if CI:
+        b.errorbar(xs, mu, yerr=[mu - ci[:, 0], ci[:, 1] - mu], fmt="none", **ERR, zorder=3)
+    for xx, r, hi in zip(xs, bins, ci[:, 1]):
         n = r["n_pairs"]; s_ = f"{n / 1e6:.1f}M" if n >= 1e6 else f"{n / 1e3:.0f}k" if n >= 1e3 else f"{n}"
-        b.text(xx, max(r["resp_mean"], 0) + 0.006, s_, ha="center", va="bottom", fontsize=5, color=INK2, rotation=90)
+        b.text(xx, max(hi, r["resp_mean"], 0) + 0.006, s_, ha="center", va="bottom", fontsize=5, color=INK2,
+               rotation=90)
     ticks += list(xs); labels += labs
-    b.text(xs.mean(), -0.042, name, ha="center", va="top", fontsize=6.5, color=INK)
-    rows += [{"panel": "b", "view": key, "bin": r["bin"], "resp_mean": r["resp_mean"], "n_pairs": r["n_pairs"]}
-             for r in bins]
-    x0 = xs[-1] + 1.5
+    b.text(xs.mean() + 0.22, -0.05, name, ha="center", va="top", fontsize=5.8, color=INK)
+    GROUP_ICON.append((key, xs.mean() + 0.22, name))
+    rows += [{"panel": "b", "view": key, "bin": r["bin"], "resp_mean": r["resp_mean"], "n_pairs": r["n_pairs"],
+              "ci_lo": float(c_[0]), "ci_hi": float(c_[1])} for r, c_ in zip(bins, ci)]
+    x0 = xs[-1] + 1.9
 ana = S["resp_mean"]["chem_high_analogues"]
 b.axhline(ana, color=VIEW["chem"], ls="--", lw=1.0, zorder=3)
+if ("analogues", "chem >= 0.6") in CI:
+    b.axhspan(*CI[("analogues", "chem >= 0.6")], color=VIEW["chem"], alpha=0.10, lw=0, zorder=1)
 b.text(-0.4, ana + 0.006, "chemical analogues", color=VIEW["chem"], fontsize=6.5, ha="left", va="bottom")
 b.axhline(0, color=INK2, lw=0.6, zorder=3)
 b.set_xticks(ticks, labels, fontsize=5.5)
 b.tick_params(axis="x", length=0, pad=1)
 b.set_ylabel("response similarity (r)", fontsize=8, labelpad=1)
-b.set_ylim(-0.02, 0.34)
+b.set_ylim(-0.02, 0.44); b.set_yticks([0, 0.1, 0.2, 0.3, 0.4])
 b.grid(axis="y", color=GRID, lw=0.6); b.set_axisbelow(True)
 panel(b, "b", -0.22)
 
@@ -142,40 +161,49 @@ c.legend(loc="upper left", bbox_to_anchor=(-0.02, 1.02), ncol=2, frameon=False, 
          handletextpad=0.3, columnspacing=0.6, borderaxespad=0)
 panel(c, "c", -0.40)
 
-# (d) four pairs: structures; measured signatures of both; the second as predicted while held out
+# (d) four pairs: structures (one scale per pair, widths by extent, never touching); measured signatures of both; the
+# second as predicted while held out, by UnDetect and by the chemistry kernel
 d.text(0.06, DH - 0.12, "d", fontsize=11, fontweight="bold", ha="left", va="center")
-CWD = 6.5 / len(EX); LABW = 0.62
+CWD = 6.5 / len(EX); LABW = 0.72; MOLY, MOLH, GAP = 1.58, 0.74, 0.14
 for k, e in enumerate(EX):
     xl = k * CWD + 0.10; wcol = CWD - 0.20
     d.text(xl + wcol / 2, DH - 0.12, e["class"], fontsize=7.5, ha="center", va="center", color=INK)
     A_, B_ = e["pair"]
+    sts = [{"atoms": st["atoms"], "bonds": [{"i": q["a"], "j": q["b"], "order": q["order"]} for q in st["bonds"]]}
+           for st in e["drawing"]]
+    sp = [np.ptp(np.array([[a_["x"], a_["y"]] for a_ in st["atoms"]]), 0) for st in sts]
+    sc_ = min((wcol - GAP - 0.04) / (sp[0][0] + sp[1][0]), MOLH / max(sp[0][1], sp[1][1]))
+    x_ = xl + (wcol - (sp[0][0] + sp[1][0]) * sc_ - GAP) / 2
     for m in range(2):
-        st = e["drawing"][m]
-        st = {"atoms": st["atoms"], "bonds": [{"i": q["a"], "j": q["b"], "order": q["order"]} for q in st["bonds"]]}
-        molecule(d, st, xl + m * wcol / 2 + 0.03, 1.08, wcol / 2 - 0.06, 0.88, color=INK2, size=3.6, lw=0.45)
-        d.text(xl + m * wcol / 2 + wcol / 4, 0.96, e["pair"][m], fontsize=6.5, ha="center", va="center", color=INK)
+        wbox = sp[m][0] * sc_ / 0.9; hbox = MOLH / 0.9
+        molecule(d, sts[m], x_ + sp[m][0] * sc_ / 2 - wbox / 2, MOLY - hbox / 2, wbox, hbox, color=INK2, size=3.6,
+                 lw=0.45)
+        d.text(x_ + sp[m][0] * sc_ / 2, 1.12, e["pair"][m], fontsize=6.5, ha="center", va="center", color=INK)
+        x_ += sp[m][0] * sc_ + GAP
     tA, tB = SIG[f"{A_}__{PID[A_]}__truth"], SIG[f"{B_}__{PID[B_]}__truth"]
-    pB = SIG[f"{B_}__{PID[B_]}__ctx_pc"]
+    pB, cB = SIG[f"{B_}__{PID[B_]}__ctx_pc"], SIG[f"{B_}__{PID[B_]}__pool_chem"]
     zA, zB = tA / tA.std(), tB / tB.std()
     g = np.argsort(-np.maximum(np.abs(zA), np.abs(zB)))[:NGENES]; g = g[np.argsort(-zA[g])]
     xs = xl + LABW
-    for m, (vec, lab) in enumerate(((tA, A_), (tB, B_), (pB, f"{B_}, UnDetect"))):
-        v = vec[g] / np.abs(vec[g]).max(); yy = 0.66 - m * 0.16
+    for m, (vec, lab, ec, tc) in enumerate(((tA, A_, LINE, INK), (tB, B_, LINE, INK),
+                                            (pB, "UnDetect", UND, "#c2413b"), (cB, "chemistry kernel", CHEMK, "#4f6178"))):
+        v = vec[g] / np.abs(vec[g]).max(); yy = 0.88 - m * 0.145
         d.imshow(v[None, :], cmap=CMAP, vmin=-1, vmax=1, aspect="auto", interpolation="nearest",
-                 extent=(xs, xl + wcol, yy, yy + 0.12), zorder=2)
-        d.add_patch(plt.Rectangle((xs, yy), xl + wcol - xs, 0.12, fc="none",
-                                  ec="#e0605a" if m == 2 else LINE, lw=0.8 if m == 2 else 0.5, zorder=3))
-        d.text(xs - 0.04, yy + 0.06, lab if m < 2 else "predicted", fontsize=5.4, ha="right", va="center",
-               color="#c2413b" if m == 2 else INK, style="italic" if m == 2 else "normal")
+                 extent=(xs, xl + wcol, yy, yy + 0.11), zorder=2)
+        d.add_patch(plt.Rectangle((xs, yy), xl + wcol - xs, 0.11, fc="none", ec=ec, lw=0.8 if m >= 2 else 0.5,
+                                  zorder=3))
+        d.text(xs - 0.04, yy + 0.055, lab, fontsize=5.4, ha="right", va="center", color=tc,
+               style="italic" if m >= 2 else "normal")
         rows += [{"panel": "d", "pair": "–".join(e["pair"]), "strip": lab, "gene_rank": i, "gene_index": int(gi),
                   "scaled": float(vv)} for i, (gi, vv) in enumerate(zip(g, v))]
-    rp = np.corrcoef(tB, pB)[0, 1]
-    d.text(xl + wcol / 2, 0.245, f"Tanimoto {e['tanimoto']:.2f}   measured r {e['resp_r']:.2f}", fontsize=6.3,
+    rp, rc = np.corrcoef(tB, pB)[0, 1], np.corrcoef(tB, cB)[0, 1]
+    d.text(xl + wcol / 2, 0.30, f"Tanimoto {e['tanimoto']:.2f}   measured r {e['resp_r']:.2f}", fontsize=6.2,
            ha="center", va="center", color=INK)
-    d.text(xl + wcol / 2, 0.135, f"predicted vs measured r {rp:.2f}", fontsize=6.3, ha="center", va="center",
-           color="#c2413b")
-    rows.append({"panel": "d", "pair": "–".join(e["pair"]), "strip": "r(pred, measured)", "scaled": float(rp)})
-kx, kw, ky, kh = 2.85, 0.8, 0.015, 0.05
+    d.text(xl + wcol / 2 - 0.05, 0.185, f"UnDetect r {rp:.2f}", fontsize=6.2, ha="right", va="center", color="#c2413b")
+    d.text(xl + wcol / 2 + 0.05, 0.185, f"chemistry r {rc:.2f}", fontsize=6.2, ha="left", va="center", color="#4f6178")
+    rows.append({"panel": "d", "pair": "–".join(e["pair"]), "strip": "r(UnDetect, measured)", "scaled": float(rp)})
+    rows.append({"panel": "d", "pair": "–".join(e["pair"]), "strip": "r(chemistry, measured)", "scaled": float(rc)})
+kx, kw, ky, kh = 2.85, 0.8, 0.03, 0.05
 d.imshow(np.linspace(-1, 1, 64)[None, :], cmap=CMAP, vmin=-1, vmax=1, aspect="auto",
          extent=(kx, kx + kw, ky, ky + kh), zorder=2)
 d.add_patch(plt.Rectangle((kx, ky), kw, kh, fc="none", ec=LINE, lw=0.5, zorder=3))
@@ -183,4 +211,10 @@ d.text(kx - 0.04, ky + kh / 2, "down", fontsize=5.8, ha="right", va="center", co
 d.text(kx + kw + 0.04, ky + kh / 2, "up", fontsize=5.8, ha="left", va="center", color=INK)
 d.set_xlim(0, 6.5); d.set_ylim(0, DH)
 
+r_ = fig.canvas.get_renderer()
+for key, xm, name in GROUP_ICON:
+    xi, yi = inch(b, xm, -0.05)
+    t_ = b.text(xm, -0.05, name, fontsize=5.8, alpha=0)          # measure the label to place the icon before it
+    wt = t_.get_window_extent(r_).width / fig.dpi; t_.remove()
+    ICON[key](ov, xi - wt / 2 - 0.07, yi - 0.055, 0.08)
 save(fig, "fig_views", sys.argv[1] if len(sys.argv) > 1 else None, table=pd.DataFrame(rows))
