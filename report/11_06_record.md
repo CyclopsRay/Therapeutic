@@ -1644,3 +1644,32 @@ per fold, as for PCC_plate. Coverage reported: plates and units kept, and the sh
   prior"; L1000 "tens of thousands of compounds" → "nearly 20,000" (19,811 small molecules in Subramanian 2017).
 - Build: 20 pages; main text pp. 2–11, References at line 23/53 of p. 11; no overfull boxes, no undefined references.
   Remaining drafting macros: code URL (intro, Discussion) and Jun Wen's acknowledgements.
+
+### 2026-11-04 19:30 — Public code repository: github.com/CyclopsRay/UnDetect (pushed, public)
+
+- New tree `/home/yuqi.lei/UnDetect` (sibling of Therapeutic), commit 3991896 on `main`; repo page and raw README
+  load without authentication. Files are **copied**, not moved: Therapeutic keeps its scripts and history.
+- Contents (102 files): the paper's scripts by import closure from the scripts cited in the paper and in the 10_09 /
+  10_30 / 11_06 reports (60 .py), their Slurm wrappers, `repro/deepce` (our DeepCE-benchmark code, no upstream clone),
+  `repro/dpb/slurm/fetch_xpert.sbatch`, `tests/test_netnull.py`, envs, README. Excluded: Rhaister-O / DepMap / CCA /
+  TxGNN / GNN / e2e branches (not in the paper; `run_rhaister_o_compact.py` and `evaluate_rhaister_signal.py` ship as
+  imports of `build_tahoe_unseen_drug.py`), the superseded `fig1_pipeline.py`, `sync_captions.py`, all third-party
+  clones.
+- Portability rewrite (scratchpad `build_release.py`): `/nfs-stor|/l/users/yuqi.lei/Therapeutic` → `UNDETECT_DATA`
+  (default `data`), `/home/yuqi.lei/Therapeutic` → `UNDETECT_ROOT` (default `.`); Slurm scripts get a two-line header
+  exporting both as absolute paths from the submit dir; `#SBATCH --output` → `data/logs/...`; `--exclude=cn-..`
+  lines dropped; envs renamed deepce-gpu → `undetect`, therapeutic-prep → `undetect-prep`; figure defaults
+  `paper/figures` → `figures`. Checks: all .py compile, all .sbatch pass `bash -n`, no `yuqi|nfs-stor|/l/users` left,
+  `tests/test_netnull.py` OK and `stage2_context.py --help` / `run_sdst_hybrid` import OK with the real envs (paths
+  resolve to `data/...`). No full pipeline re-run from the release tree.
+- No LICENSE file yet (user to choose). Paper: both code-URL `\todo`s replaced by the link (local, not pushed).
+
+### 2026-11-04 19:50 — Paper complete; bioRxiv version prepared (paper 0183c19, pushed)
+
+- Acknowledgements paragraph removed (user); both code-URL `\todo`s replaced by github.com/CyclopsRay/UnDetect. No
+  drafting macro left in `sections/0[0-7]*.tex`. Build of main.tex: 20 pages, References on p. 11, no undefined refs.
+- bioRxiv: `paper/main_biorxiv.tex` reuses the section files (differences: no drafting macros, PDF metadata, no
+  separate title page); `paper/biorxiv/UnDetect_preprint.pdf` (20 pages, tectonic) and `biorxiv/SUBMISSION.md` (form
+  fields; plain-text abstract checked word for word against `abstract.txt` = registered abstract).
+- RECOMB rule (paper/README.md): preprints allowed; accepted papers must be on bioRxiv/arXiv by the final-version
+  date. Posting needs all four authors' consent and a license choice; not posted.
