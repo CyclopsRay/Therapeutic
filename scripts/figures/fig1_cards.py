@@ -112,8 +112,16 @@ def dot(ax, x, y, color):
 
 
 def node(ax, x, y, sym, color=INK2, fc="white", r=0.065):
+    """Operator in a circle; +, − and × are drawn as strokes so they sit exactly at the centre (a glyph sits on the
+    font's baseline and looks high)."""
     ax.add_patch(Circle((x, y), r, fc=fc, ec=color, lw=0.8, zorder=5))
-    label(ax, x, y + 0.004, sym, size=7.5, color=color)
+    a, kw = 0.45 * r, dict(color=color, lw=0.8, solid_capstyle="round", zorder=6)
+    if sym == "×":
+        a *= 0.8; ax.plot([x - a, x + a], [y - a, y + a], **kw); ax.plot([x - a, x + a], [y + a, y - a], **kw)
+        return
+    ax.plot([x - a, x + a], [y, y], **kw)
+    if sym == "+":
+        ax.plot([x, x], [y - a, y + a], **kw)
 
 
 def dots(ax, x, y, orient="v", gap=0.035, r=0.009, color=MUTED):
@@ -425,28 +433,51 @@ def matrix_mix(ax, x, y, s, S, z=4):
     ax.add_patch(Rectangle((x, y), s, s, fc="none", ec=INK2, lw=0.5, zorder=z + 1))
 
 
-WCOL = 0.62                                  # width of the view-weight column in the fusion module
+WCOL = 0.62                                  # kept for the module width and XF
 FWID = 0.12 + WCOL + 0.20 + FS + 0.15        # fusion module width
-FHGT = HB + 0.08 + FS + 0.18                 # fusion module height (only what it holds)
+FS2 = 1.05                                   # normalised kernel in the fusion module (larger than a view kernel)
+RIB = 0.20                                   # total ribbon width at the merge = arrow shaft height
 
 
-def part_fusion(ax, xl, top, S):
-    """Fusion + normalization, compact, from xl: left the view weights w_v (KTA, mean of five folds) as bars with the
-    view icons, no values; right the normalised multi-view kernel (unit diagonal). Bar length is drawn from an offset
-    (w - 0.20) so the small differences between views are visible; the bars are a schematic, not to scale. Returns the
-    kernel's bottom-centre (the query row) and the module's left edge at its mid-height."""
-    bot = top - FHGT
-    module(ax, xl, bot, FWID, FHGT, "Fusion + normalization", "eff")
-    my = bot + 0.18; ym = my + FS / 2; wx = xl + 0.12
-    for r, (key, _) in enumerate(VIEWS):
-        yy = ym + (1.5 - r) * 0.17; w_ = S["weights"][key]; bl = 0.06 + (w_ - 0.20) / 0.10 * 0.40
-        ICON[key](ax, wx + 0.04, yy, 0.085)
-        ax.add_patch(Rectangle((wx + 0.13, yy - 0.035), bl, 0.07, fc=VIEW[key], ec="none", zorder=4))
-    nx = xl + 0.12 + WCOL + 0.20
-    arrow(ax, xl + 0.12 + WCOL - 0.02, ym, nx - 0.10, ym, color=OURS)    # stops before the row labels
-    matrix(ax, nx, my, FS, S["kernels"]["norm"], OURS, hl_last=True)
-    axis_labels(ax, nx, my, FS, size=6.0, cols="bottom")
-    return (nx + FS / 2, my), (xl, ym)
+def part_fusion(ax, xl, top, bot, S):
+    """Fusion + normalization (layout after Keqin Peng's revision, 2026-11-04): full height, aligned with the other two
+    top modules; the normalised multi-view kernel, larger, placed so that its M column sits over the regression's
+    similarity column at XF and the query arrow leaves from below the M label. Returns the query point, the merge
+    point of the view ribbons (in the gutter before the module) and the arrow tip, both at the kernel's mid-height."""
+    module(ax, xl, bot, FWID, top - bot, "Fusion + normalization", "eff")
+    nx = XF - 0.875 * FS2                                           # centre of the 4th (M) column at XF
+    lo, hi = bot + 0.20, top - HB - 0.06
+    my = lo + (hi - lo - FS2) / 2; ym = my + FS2 / 2
+    matrix(ax, nx, my, FS2, S["kernels"]["norm"], OURS, hl_last=True)
+    axis_labels(ax, nx, my, FS2, size=6.0, cols="bottom")
+    return (XF, my - 0.17), (xl - 0.10, ym), nx - 0.17
+
+
+def part_flow(ax, kx, ky, merge, tip, S):
+    """One ribbon per view from its kernel card's right edge to a merge point, then one arrow into the fused kernel.
+    Ribbon width is proportional to the view weight w_v (KTA, mean of five folds), so the four widths are to scale and
+    sum to RIB; each ribbon fades in from its card. Order at the merge, top to bottom: Cell Painting, mechanism,
+    targets, structure (as the cards are stacked)."""
+    xm, ym = merge
+    w = np.array([S["weights"][k] for k, _ in VIEWS], float); w = w / w.sum() * RIB
+    ytop = ym + RIB / 2; t = np.linspace(0, 1, 61)
+    for k in (3, 2, 1, 0):
+        key = VIEWS[k][0]
+        x0, y0 = kx + k * KD + KS, ky + k * KD + 0.42 * KS
+        yc = ytop - w[3:k:-1].sum() - w[k] / 2 if k < 3 else ytop - w[3] / 2
+        P = np.array([(x0, y0), (x0 + 0.45 * (xm - x0), y0), (xm - 0.45 * (xm - x0), yc), (xm, yc)])
+        B = ((1 - t) ** 3)[:, None] * P[0] + (3 * (1 - t) ** 2 * t)[:, None] * P[1] + \
+            (3 * (1 - t) * t ** 2)[:, None] * P[2] + (t ** 3)[:, None] * P[3]
+        h = w[k] / 2
+        for i in range(0, len(t) - 1, 2):                                   # fade in: alpha grows along the ribbon
+            seg = B[i:i + 3]
+            poly = np.vstack([seg + [0, h], (seg - [0, h])[::-1]])
+            ax.add_patch(Polygon(poly, closed=True, fc=VIEW[key], ec="none", alpha=0.12 + 0.78 * t[i],
+                                 zorder=6))
+    hl, hh = 0.16, 0.85 * RIB                                                # arrow: shaft = RIB, larger head
+    ax.add_patch(Polygon([(xm, ym + RIB / 2), (tip - hl, ym + RIB / 2), (tip - hl, ym + hh), (tip, ym),
+                          (tip - hl, ym - hh), (tip - hl, ym - RIB / 2), (xm, ym - RIB / 2)], closed=True,
+                         fc=OURS, ec="none", zorder=6.1))
 
 
 TH = 1.17
@@ -571,7 +602,7 @@ def part_context(ax, x, yT, yD, yB, vals):
     deck(ax, rsx, yT - SH / 2, vals["res"], tint(MOD["meas"], 1.0))
     label(ax, rsx + SW / 2 + 0.03, yT - 0.12, "Residual", size=5.6)
     A["res"] = (rsx + SW + 0.07, yT); A["ctx"] = (cx + SW + 0.07, yB); A["ctx_branch"] = rx
-    A["meas"] = (wx + 0.08, rsx + SW + 0.10)
+    A["meas"] = (wx + 0.08, rsx + SW + 0.14)
     A["ctx_box"] = (x, cx + SW + 0.12)
     return A
 
@@ -628,8 +659,8 @@ def assemble(S, vals):
     (kfx, kfy), kright = part_kernels(ax, kx, ky, S)
     path(ax, [(cx0 + cw, kfy), (kmx, kfy)], color=FLOW)                    # compound information -> kernels
     # fusion
-    (qx, qy), (fl, fm) = part_fusion(ax, XL, kmb + FHGT, S)          # bottom-aligned with the kernels module
-    path(ax, [(kmx + kmw, fm), (fl, fm)], color=FLOW)                      # kernels -> fusion, at matrix height
+    (qx, qy), merge, tip = part_fusion(ax, XL, top, kmb, S)       # same top and bottom as the kernels module
+    part_flow(ax, kx, ky, merge, tip, S)                             # view ribbons -> arrow -> fused kernel
     # context lane and measured responses
     yT = cbot - 0.05 - GUT - 0.39; yB = 0.34; yD = yB + 0.40   # measured module sits one gutter below the cards
     A = part_context(ax, 0.10, yT, yD, yB, vals)
@@ -641,9 +672,9 @@ def assemble(S, vals):
     T = part_transfer(ax, tx, yT + 0.25 + 0.47 + 0.13 + (SH + 0.03) / 2, XF, vals, S)
     path(ax, [(qx, qy), (qx, T["w0"][0] + 0.003)], color=OURS, lw=0.75)          # query row -> similarity weights
     ax.plot([qx, qx], [T["w0"][1], T["w1"][0]], color=OURS, lw=0.9, zorder=3)
-    rx, ry = A["res"]; br = tx - 0.16                                           # residual -> per line and shared
+    rx, ry = A["res"]; br = tx - 0.35                                           # residual -> per line and shared
     path(ax, [(rx, ry), (tx, T["in1"][1])], color=FLOW)
-    path(ax, [(br, ry), (br, T["in0"][1]), (tx, T["in0"][1])], color=FLOW)
+    path(ax, [(br, ry), (br, T["in0"][1]), (tx, T["in0"][1])], color=FLOW, r=0.10)
     dot(ax, br, ry, INK2)
     # output: control PCs, interaction and compound effect in one row inside the prediction module; the response
     # sits right of the module, under the regression's sum

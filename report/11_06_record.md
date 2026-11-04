@@ -1727,3 +1727,14 @@ abstract change (registered). Fig. 1 post-hoc note: not added (no performance cl
   PCC_within leads XPert in every plate-mate bin; Δ invertibility moved to App. A.1. Abstract unchanged.
 - Build: main.tex References p. 11 line 41/45 (4 filler lines still fit on p. 11); bioRxiv PDF rebuilt.
 - Job 369389 (self-retrieval) completed; outputs in results/sdst_hybrid/within_retrieval/; to be read on 2026-11-05.
+
+### 2026-11-04 23:50 — Fig. 1: Keqin Peng's revision ported into the generator
+
+Keqin's hand-edited `paper/figures/fig1_pipeline(2).svg` (Illustrator; untracked) compared with the generated figure by
+a pixel diff of both renders (fonts mapped ArialMT -> Arial). His changes, all ported to `scripts/figures/fig1_cards.py`:
+Fusion module full height (same top/bottom as the other top modules); larger fused kernel (FS2 1.05) with its M column
+over the regression's similarity column (query arrow from below the M label); flow ribbons from the kernel cards into
+one blue arrow (here: ribbon width = KTA view weight, replacing the weight bars, so no information is lost); +, −, ×
+drawn as centred strokes; measured module wider (+0.04 in); residual branch further left (tx − 0.35) with a softer
+corner. Not taken: removal of the hatching on missing views (the caption and the method rely on it). Caption: "(ribbon
+widths)" added. Build unchanged: References p. 11 line 41/45; bioRxiv PDF rebuilt.
