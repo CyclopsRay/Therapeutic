@@ -1571,3 +1571,5 @@ per fold, as for PCC_plate. Coverage reported: plates and units kept, and the sh
   scaled to the text width the figure is ~4% larger. (3) "cell line × plate" well replaced by three petri dishes, one
   per cell line (muted slate / mauve / sage), labelled "cell lines"; the plate wells use the same three colours.
   Build: References still at line 46/50 of p. 11.
+- Fig. 1: Fusion module bottom-aligned with the Similarity kernels module (gap to Kernel regression = one gutter;
+  fused kernel level with the front view kernel); the free space moves to the top-right corner.

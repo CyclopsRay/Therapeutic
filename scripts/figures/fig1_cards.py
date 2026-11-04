@@ -628,7 +628,7 @@ def assemble(S, vals):
     (kfx, kfy), kright = part_kernels(ax, kx, ky, S)
     path(ax, [(cx0 + cw, kfy), (kmx, kfy)], color=FLOW)                    # compound information -> kernels
     # fusion
-    (qx, qy), (fl, fm) = part_fusion(ax, XL, top, S)
+    (qx, qy), (fl, fm) = part_fusion(ax, XL, kmb + FHGT, S)          # bottom-aligned with the kernels module
     path(ax, [(kmx + kmw, fm), (fl, fm)], color=FLOW)                      # kernels -> fusion, at matrix height
     # context lane and measured responses
     yT = cbot - 0.05 - GUT - 0.39; yD, yB = 0.98, 0.40     # measured module sits one gutter below the cards
