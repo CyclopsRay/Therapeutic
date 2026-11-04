@@ -32,14 +32,31 @@ def setup() -> bool:
     path = os.environ.get("FIG_FONT")
     final = False
     if path and Path(path).exists():
-        font_manager.fontManager.addfont(path)
         fam = font_manager.FontProperties(fname=path).get_name()
+        # 2026-11-04: also load the other faces of the same family from that folder (bold, italic), so bold labels
+        # are real Arial Bold rather than a fallback; e.g. FIG_FONT=~/.fonts/arial/Arial.ttf next to Arial Bold.ttf.
+        faces = [f for f in Path(path).parent.glob("*.[tT][tT][fF]")
+                 if font_manager.FontProperties(fname=str(f)).get_name() == fam]
+        for f in faces:
+            font_manager.fontManager.addfont(str(f))
         final = fam.lower().startswith("arial")
-        plt.rcParams["font.sans-serif"] = [fam]
+        if final and not any("bold" in font_manager.FontProperties(fname=str(f)).get_weight().__str__().lower() or
+                             "bd" in f.stem.lower() or "bold" in f.stem.lower() for f in faces):
+            print(f"warning: no bold face of {fam} next to {path}; bold text will not be Arial Bold")
+        # glyph fallback for symbols the base family lacks (e.g. ℓ, ≥): a wider face of the same family, if present
+        fb = [font_manager.FontProperties(fname=str(f)).get_name() for f in Path(path).parent.glob("*.[tT][tT][fF]")
+              if font_manager.FontProperties(fname=str(f)).get_name().startswith(f"{fam} Unicode")]
+        for f in Path(path).parent.glob("*.[tT][tT][fF]"):
+            if font_manager.FontProperties(fname=str(f)).get_name() in fb:
+                font_manager.fontManager.addfont(str(f))
+        plt.rcParams["font.sans-serif"] = [fam] + fb
+        plt.rcParams.update({"mathtext.fontset": "custom", "mathtext.rm": fam, "mathtext.it": f"{fam}:italic",
+                             "mathtext.bf": f"{fam}:bold"})
     else:
         plt.rcParams["font.sans-serif"] = ["DejaVu Sans"]
+        plt.rcParams["mathtext.fontset"] = "dejavusans"
     plt.rcParams.update({
-        "font.family": "sans-serif", "mathtext.fontset": "dejavusans", "font.size": 9,
+        "font.family": "sans-serif", "font.size": 9,
         "svg.fonttype": "none", "pdf.fonttype": 42, "ps.fonttype": 42,
         "axes.linewidth": 0.6, "xtick.major.width": 0.6, "ytick.major.width": 0.6,
         "xtick.major.size": 3, "ytick.major.size": 3, "axes.spines.top": False, "axes.spines.right": False,

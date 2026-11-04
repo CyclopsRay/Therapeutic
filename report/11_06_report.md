@@ -880,3 +880,59 @@ scores −0.0000), all compound-aware arms 0.7–18.8.
   `peak_rss_MB`); `/nfs-stor/yuqi.lei/Therapeutic/logs/dpb-train-357100.out` line 696 ("Training_time:268.17min") and
   last line ("OK 16604.7s xpert fold_0"). Parameter counts: `11_06_record.md` 2026-11-03 (wall-time entry).
 - Stage labels checked against the log: stage 1 = backbone training + kernel/KRR cache per fold; stage 2 = interaction.
+
+## 14. Case study: the Fig. 1 compounds and the Fig. 3d pairs, each scored where it is held out (job 367833; no training; 2026-11-04)
+
+Script `scripts/case_study_compounds.py` (`slurm/case_study_compounds.sbatch`, cn node, about 1 min). Each pert_idx is a test
+compound in exactly one fold; its rows are scored with the `final_cpu` predictions of that fold, PCC_plate with the plate
+mean of finalize_sdst.py (training = groups ≠ f, f+1). Signatures = mean plate-centred profile over its rows with a plate-mate.
+Sources: `/nfs-stor/yuqi.lei/Therapeutic/results/sdst_hybrid/case_study/{scores.csv, signatures.npz, summary.json}`; log
+`/nfs-stor/yuqi.lei/Therapeutic/logs/case-study-367833.out`.
+
+PCC_plate per compound (mean over its rows with a training plate-mate):
+
+| compound (pert_id) | fold | rows / with mate | drug-free MLP (Bai) | chemistry kernel | XPert | UnDetect | UnDetect + XPert |
+|---|---|---|---|---|---|---|---|
+| mitoxantrone (BRD-K21680192), Fig. 1 query | 1 | 94 / 70 | −0.206 | −0.080 | −0.009 | **0.581** | 0.554 |
+| daunorubicin (BRD-A37630846), Fig. 1 | 0 | 42 / 37 | −0.167 | 0.666 | **0.782** | 0.686 | 0.771 |
+| vorinostat (BRD-K81418486), Fig. 1 | 2 | 84 / 50 | −0.009 | 0.343 | **0.676** | 0.623 | 0.689 |
+| panobinostat (BRD-K02130563) | 2 | 90 / 82 | −0.157 | 0.460 | **0.776** | 0.666 | 0.776 |
+| trametinib (BRD-K12343256) | 1 | 100 / 91 | 0.024 | 0.309 | 0.339 | **0.507** | 0.498 |
+| selumetinib (BRD-K57080016) | 4 | 111 / 95 | 0.103 | 0.267 | 0.048 | **0.419** | 0.363 |
+| alvocidib (BRD-K87909389) | 4 | 63 / 47 | −0.163 | −0.022 | −0.148 | **0.623** | 0.493 |
+| R-547 (BRD-K52233191) | 0 | 50 / 40 | −0.164 | −0.103 | −0.267 | **0.628** | 0.367 |
+
+Correlation of the second compound's measured mean signature with its prediction (Fig. 3d pairs):
+
+| pair | measured r (A, B) | B vs UnDetect | B vs chemistry kernel | B vs XPert |
+|---|---|---|---|---|
+| panobinostat – vorinostat | 0.937 | 0.886 | 0.534 | 0.871 |
+| trametinib – selumetinib | 0.886 | 0.784 | 0.667 | −0.120 |
+| daunorubicin – mitoxantrone | 0.910 | 0.850 | −0.194 | −0.384 |
+| alvocidib – R-547 | 0.938 | 0.779 | −0.500 | −0.786 |
+
+- Measured r matches the pair statistics in `compound_analysis_final/example_pairs.json` (0.938 / 0.883 / 0.918 / 0.936).
+- **Not a random sample:** these eight compounds were picked as chemically unlike pairs that respond alike (closest pairs in
+  the fused kernel, one per mechanism; §8), the setting where the views should help. XPert is higher for daunorubicin,
+  vorinostat and panobinostat; UnDetect is higher for the other five, by the widest margin where chemistry points to the
+  wrong neighbours (mitoxantrone, alvocidib, R-547).
+- Daunorubicin has five stereoisomer pert_ids (folds 0, 0, 0, 2, 3); the Fig. 1 entry BRD-A37630846 is in fold 0, and
+  isomers in other folds are training compounds when it is tested. This is a property of the benchmark's split by
+  pert_id; it affects daunorubicin's scores for every model.
+
+### 14.1 Scan of every held-out compound for the case study (job 367867; `scripts/case_study_scan.py`; 2026-11-04)
+
+Same scoring as §14, all 8,217 held-out compounds. Source: `results/sdst_hybrid/case_study/scan.csv`; log
+`logs/case-scan-367867.out`. Named compounds (cmap_name not a BRD id) with ≥ 30 rows that have a plate-mate: 337.
+UnDetect > XPert for 49% of them, > chemistry kernel for 72%. Ranked by min(UnDetect − XPert, UnDetect − chemistry):
+
+| rank | compound | rows with mate | chemistry | XPert | UnDetect | − XPert | − chemistry | annotation |
+|---|---|---|---|---|---|---|---|---|
+| 1 | R-547 | 40 | −0.103 | −0.267 | 0.628 | +0.895 | +0.731 | none (Cell Painting only) |
+| 2 | alvocidib | 47 | −0.022 | −0.148 | 0.623 | +0.771 | +0.646 | CDKs |
+| 3 | mitoxantrone (Fig. 1 query) | 70 | −0.080 | −0.009 | 0.581 | +0.590 | +0.661 | TOP2A |
+| 4 | emetine | 52 | −0.045 | −0.002 | 0.475 | +0.476 | +0.519 | RPS2 |
+| 5 | PHA-793887 | 38 | −0.130 | 0.009 | 0.442 | +0.433 | +0.572 | CDKs |
+
+Decision (record 09:10): keep mitoxantrone as the Fig. 1 query and Fig. 3c case: third of 337, most rows of the top
+three, annotated target and mechanism shared with daunorubicin.

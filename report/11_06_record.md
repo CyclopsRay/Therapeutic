@@ -1477,3 +1477,87 @@ per fold, as for PCC_plate. Coverage reported: plates and units kept, and the sh
   2 min interaction, 5 GB GPU memory) against 268 min for XPert fold 0, same GPU type (A100-SXM4-40GB). Same sentence
   in the Discussion. Only XPert fold 0 was timed.
 - Build: main text pp. 2–11, References at line 46/50 of p. 11, no overfull boxes, no undefined references.
+
+### 2026-11-04 08:30 — Fig. 1 v7 and Fig. 3 v2 drafts (local; paper/figures overwritten, not committed)
+
+- Pushed before this: paper 6978b63, Therapeutic bc1bf0d.
+- **Fig. 1 v7** (`scripts/figures/fig1_cards.py`), from Jun Wen's comments and the user's GPT mock-up (style only; its
+  content was wrong: backbone input (ℓ, p) instead of the DMSO control, "context PCs = plate, cell line, batch",
+  residual = treated − control, no interaction, wrong daunorubicin MoA and mitoxantrone structure):
+  - Module frames, one meaning per colour (legend top right): lavender compound information, sand dashed measured
+    (profiled only), gray context, blue compound effect, light red prediction (UnDetect's colour in Fig. 2).
+  - View icons in the view colours: fingerprint, protein with a pocket and ligand, pathway with an inhibition bar,
+    stained cell. Compound titles carry their letter: Daunorubicin (D), Vorinostat (V), Mitoxantrone (M).
+  - Kernel deck as tabbed cards (icon + name on each tab), front = structure with its matrix.
+  - Separate boxes: compound effect, control PCs, interaction, response. Rounded line corners.
+  - "Kernel transfer" renamed "Kernel regression" (Jun Wen: avoid "transfer"). Fusion box shows the eq. 2 formula.
+- **Fig. 3 v2** (`scripts/figures/fig_views.py`): (a) view ablation as gain bars with fold s.d.; (b) bins relabelled,
+  pair counts on bars (the Cell Painting ≥ 0.7 bin has only 99 pairs); old (c) (gain by nearest chemical neighbour,
+  4 bins, not monotone) dropped; new (c) = the three Fig. 1 compounds, each scored in its held-out fold (user's
+  suggestion); (d) adds a third strip per pair: the second compound as predicted by UnDetect while held out, with its
+  correlation to the measured signature. Numbers: report §14 (job 367833).
+- Paper captions and the case-study text still describe the old figures; update after the user reviews the drafts.
+- Python env note: /nfs-stor envs hang on NFS I/O today; figures were rendered with numpy/pandas/matplotlib pip-installed
+  into the session scratchpad.
+- 08:50 (user, Fig. 1 v7.1): shared and per-line terms summed inside the Kernel regression module; Compound effect
+  directly right of it, then down-left into a centred Interaction box; Control PCs moved left; + context and Response
+  under / right of the interaction (shorter bottom lines). Fingerprint rows show the barcode only (no "Morgan
+  fingerprint" text). "Compound views" kept: the paper says "compound view v" (Method §2.2) and "compound views"
+  (Results, Fig. 3 caption); the kernel section is "Multi-view compound kernel".
+
+### 2026-11-04 09:10 — Fig. 1 v7.2 (user's 8 points) and case-study scan
+
+- Module title bands greyer with a divider line; module names: Compound information, Similarity kernels (Method §2.2:
+  "similarity kernel K_v"), Fusion + normalization, Kernel regression, Measured responses (profiled compounds only),
+  Context. One arrow per module pair (compound information → kernels → fusion; fusion query row → regression).
+- Cell Painting row shows the profile vector: z-scores on the 40 highest-variance of 1,026 CellProfiler features
+  (`scripts/figures/fig1_cp_profiles.py` adds `cp_profile` to `fig1_pipeline_source.json`).
+- Fusion formula removed (eq. 2 is in Method; the box only needs to show the fused, normalised kernel).
+- "Targets" → "Protein targets". Control PCs line straight into the × of the interaction; interaction centred between
+  the control PCs and the compound-effect column; box titles shrink to fit.
+- Case study: scan (report §14.1) puts mitoxantrone 3rd of 337; R-547 and alvocidib rank higher but R-547 has no
+  annotation and alvocidib fewer rows. Mitoxantrone kept.
+
+### 2026-11-04 (session 2) — Fig. 1: thinner frames, fusion matrix at kernel size; font gate
+
+- Module frames 0.8 → 0.45 pt, title divider 0.35 pt, small boxes 0.5 pt, query card 0.8 pt.
+- Fusion module now spans the same height as the Similarity kernels module; its matrix has the kernel size (KS) and sits
+  level with the front kernel; above it the KTA view weights w_v (mean of five folds, `fig1_pipeline_source.json`
+  "weights": chem 0.290, targets 0.245, MoA 0.226, Cell Painting 0.238) as one stacked bar.
+- Font: no Arial on the cluster (fc-list: DejaVu only); the figure standard rejects Liberation/Nimbus. `style.py` now
+  loads every face of the FIG_FONT family from its folder (bold, italic) and sets mathtext to that family. Needs the
+  user's licensed Arial files (macOS: /System/Library/Fonts/Supplemental/Arial*.ttf).
+- Scratchpad (pip-installed numpy/pandas/matplotlib) was cleared at the session restart and reinstalled.
+- Arial supplied by the user (~/.fonts/arial, macOS faces). `style.py` loads the Arial faces of that folder plus
+  "Arial Unicode MS" as a glyph fallback; all five figures re-rendered with FIG_FONT=~/.fonts/arial/Arial.ttf, font
+  gate passed, embedded fonts ArialMT / Arial-BoldMT / Arial-ItalicMT only (checked with pypdf). `\includegraphics`
+  switched from `*_preview` to the final files. Build: main text pp. 2–11, References at line 46/50 of p. 11.
+- Fig. 1: residual → per-line arrow now straight (Kernel regression placed so its per-line row is at the residual's
+  height; only the branch to the shared row bends); orange module "Measured responses for profiled compounds";
+  module legend removed (caption and module titles carry it); Fusion widened to the right edge, view weights as four
+  short bars with icons and values beside the matrix.
+- Fig. 1 fusion step drawn out without words (user: use the free space, no "view weights" text): left, the weighted
+  sum Σ w_v K_v with each cell split into one stripe per view (width ∝ w_v, shade = that view's similarity, hatched
+  where the pair lacks the view, so V's diagonal is visibly weaker: no Cell Painting); arrow; right, the normalised
+  K̃ (unit diagonal). Both at kernel size (0.80 in), sharing row labels. Kernel regression now spans to the right edge;
+  shared and per-line join at a + on the per-line row, which feeds Compound effect directly below; Compound effect →
+  Interaction (left, straight) → + context → Response; Control PCs, Interaction and Response moved left
+  (centres 2.78 / 3.82 / 4.82 in).
+- Fig. 1 v8 candidate ("高级感", user asked; scientific-figure-making references are data-plot demos, so their
+  discipline was applied rather than a template): module cards white with a soft shadow, hairline border in a light tint
+  of the module colour, light grey title band, colour accent bar + capitalised title; the small boxes (control PCs,
+  compound effect, interaction, response) in the same style; every expression-change strip (Δ, residual, context,
+  shared/per-line sums, compound effect, response) on the blue–red diverging scale of Fig. 3, levels (DMSO, treated,
+  control PCs) in grey; one arrow weight (0.6 pt, #4d4d4d; compound-effect lane blue); row names regular weight.
+  v7 kept in the scratchpad for comparison (fig1_cards_v7.py, fig1_v7.png); v8 rendered to the scratchpad only.
+- Fig. 1 final round (user on v8): kept capitals, lighter colours, white modules; removed the accent bars; fusion shows
+  one matrix, the normalised K̃ (the striped weighted-sum matrix dropped); **vectors: hue = meaning, shade = value**
+  (sand measured: treated, Δ, residual and the regression inputs; grey context: DMSO, context, control PCs; blue compound
+  effect: shared / per-line sums, compound effect; red prediction: response; view colours for fingerprint and Cell
+  Painting), low value light, high dark; 8 cells per vector; lighter kernel tabs; 0.08 in gutters and aligned left edges.
+- Captions: Fig. 1 states the frame/vector colour rule; Fig. 3 rewritten for v2 (a–d) with the choice rule for (d).
+  Case-study paragraph: mitoxantrone held out, UnDetect 0.58 PCC_plate vs chemistry −0.08 and XPert −0.01; pairs'
+  predicted-vs-measured r 0.78–0.89 (report §14). Old sentence citing the dropped Fig. 3c (gain by nearest chemical
+  neighbour) removed.
+- Paper pushed 3d7e806: final Arial figures, `_preview` files and the stale v6 `fig1_parts/` removed.
+  Build: main text pp. 2–11, References at line 46/50 of p. 11.

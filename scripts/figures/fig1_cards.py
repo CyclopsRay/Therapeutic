@@ -1,16 +1,17 @@
-"""Fig. 1 v6 of the UnDetect paper: compound cards (user sketch and review, 2026-11-02). Dossier:
-paper/figures/fig1_pipeline.md.
+"""Fig. 1 v7 of the UnDetect paper: modules (Jun Wen's review, 2026-11-04). Dossier: paper/figures/fig1_pipeline.md.
 
-Left: profiled compound cards (daunorubicin, vorinostat, then an ellipsis for the other profiled compounds) and the
-unprofiled query (mitoxantrone) at the bottom. Each card: structure on the left, four view sections on the right
-(Morgan fingerprint, targets, mechanism, Cell Painting), each on its view colour. Middle: the view kernels as a deck
-(structure in front). Right column, top to bottom: fusion + normalization (query = bottom row) -> kernel transfer
-(shared / per line) -> compound effect -> interaction -> sum -> response. Bottom: cells of one (cell line, plate)
-give the DMSO control and, for profiled compounds, the treated profile; residual = (treated - DMSO) - context.
+Every block sits in a rounded module frame with a title, and each frame colour has one meaning (legend, top right):
+lavender = compound information (cards, view kernels); sand, dashed = measured responses of profiled compounds only;
+gray = context, no compound; blue = compound effect (fusion, kernel regression, compound effect); light red =
+prediction (interaction, response; UnDetect's colour in Fig. 2). View colours (red structure, yellow targets, pink
+mechanism, green Cell Painting) only mark the view, each with an icon: fingerprint, protein with a binding pocket,
+pathway with an inhibition bar, a stained cell. Compounds carry their letter (D, V, M) used in the kernels. Kernel
+layers are tabbed cards, each tab with the view's icon and name. Compound effect, control PCs, interaction and response
+are separate boxes. Line corners are rounded.
 Shading only, no numbers: kernel shades are the real values (fig1_cards_data.py); expression strips are a toy seed.
-Run: /nfs-stor/yuqi.lei/Therapeutic/envs/gnn-gpu/bin/python -I scripts/figures/fig1_cards.py [SOURCE_DIR [OUTDIR]]
-     [--parts]   (also writes each part on its own canvas as SVG into <OUTDIR>/fig1_parts/)
-SOURCE_DIR and OUTDIR default to paper/figures; writes fig1_pipeline[_preview].{pdf,svg,png}.
+v6 (2026-11-02): compound cards; v7 keeps its data and order (D, V, ..., M; query last).
+Run: python -I scripts/figures/fig1_cards.py [SOURCE_DIR [OUTDIR]]   (numpy + matplotlib; SOURCE_DIR and OUTDIR
+default to paper/figures; writes fig1_pipeline[_preview].{pdf,svg,png}).
 """
 import json
 import sys
@@ -19,17 +20,24 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from style import CTX, CTX_LIGHT, FIGDIR, INK, INK2, LINE, MUTED, OURS, OURS_LIGHT, PANEL, VIEW, plt, save  # noqa: E402
-from matplotlib import colors as mcolors, patheffects  # noqa: E402
-from matplotlib.patches import Circle, Ellipse, FancyArrowPatch, FancyBboxPatch, Rectangle  # noqa: E402
+from style import CTX, CTX_LIGHT, DIV_NEG, DIV_POS, FIGDIR, INK, INK2, LINE, MUTED, OURS, OURS_LIGHT, PANEL, VIEW, plt, save  # noqa: E402,E501
+from matplotlib import colors as mcolors  # noqa: E402
+from matplotlib.path import Path as MPath  # noqa: E402
+from matplotlib.patches import Arc, Circle, Ellipse, FancyArrowPatch, FancyBboxPatch, Polygon, Rectangle, Wedge  # noqa: E402,E501
 
 SEED = 7
 QUERY = 1                                   # mitoxantrone, the unprofiled compound
 TITLE = ["Daunorubicin", "Mitoxantrone", "Vorinostat"]
 LETTER = {0: "D", 1: "M", 2: "V"}
 ORDER = [0, 2, None, 1]                     # matrix order: D, V, other profiled compounds, M (query last)
-VIEWS = [("chem", "Structure"), ("tgt", "Targets"), ("moa", "Mechanism"), ("morph", "Cell Painting")]
-SW, SH = 0.36, 0.09                         # expression strip
+VIEWS = [("chem", "Structure"), ("tgt", "Protein targets"), ("moa", "Mechanism"), ("morph", "Cell Painting")]
+MOD = {"info": "#7b74c9", "meas": "#b8893a", "ctx": CTX, "eff": OURS, "pred": "#e0605a"}
+MOD_NAME = {"info": "compound info", "meas": "measured", "ctx": "context", "eff": "compound effect",
+            "pred": "prediction"}
+PRED_LIGHT = "#fbe3e1"
+DIV = mcolors.LinearSegmentedColormap.from_list("div", [DIV_NEG, "#f1f0ed", DIV_POS])   # expression change, as in Fig. 3
+FLOW = "#4d4d4d"                             # every arrow except the compound-effect lane
+SW, SH = 0.34, 0.085                        # expression strip
 rng = np.random.default_rng(SEED)
 
 
@@ -45,7 +53,8 @@ def box(ax, x, y, w, h, fc, ec, r=0.05, lw=0.7, z=1, ls="-", **kw):
 
 
 def label(ax, x, y, s, size=6.5, color=INK, ha="center", va="center", **kw):
-    return ax.text(x, y, s, fontsize=size, color=color, ha=ha, va=va, zorder=9, **kw)
+    kw.setdefault("zorder", 9)
+    return ax.text(x, y, s, fontsize=size, color=color, ha=ha, va=va, **kw)
 
 
 def fit(ax, x, y, s, maxw, size, **kw):
@@ -57,27 +66,54 @@ def fit(ax, x, y, s, maxw, size, **kw):
     return t
 
 
-def arrow(ax, x1, y1, x2, y2, color=INK2, lw=0.8, ms=7):
-    ax.add_patch(FancyArrowPatch((x1, y1), (x2, y2), arrowstyle="-|>", mutation_scale=ms, lw=lw, color=color,
-                                 shrinkA=0, shrinkB=0, zorder=3))
+HB = 0.155                                   # module title band
 
 
-def path(ax, pts, color=INK2, lw=0.8, halo=False):
-    """Polyline with an arrow head on its last segment; halo = white casing so crossing lines read as a hop."""
-    xs, ys = zip(*pts)
-    pe = [patheffects.withStroke(linewidth=lw + 3, foreground="white")] if halo else None
-    ax.plot(xs[:-1], ys[:-1], color=color, lw=lw, zorder=2.5 if halo else 2, solid_joinstyle="miter",
-            path_effects=pe)
-    arrow(ax, xs[-2], ys[-2], xs[-1], ys[-1], color=color, lw=lw)
+def module(ax, x, y, w, h, title, key, dashed=False, z=0.5, size=5.5, tx=0.07):
+    """Module card: white, soft shadow, hairline border in a light tint of its meaning colour; a light grey title
+    band with a hairline divider; a short accent bar in the module colour, then the title in capitals."""
+    c = MOD[key]
+    ax.add_patch(FancyBboxPatch((x + 0.014, y - 0.014), w, h, boxstyle="round,pad=0,rounding_size=0.06",
+                                fc="black", alpha=0.06, ec="none", zorder=z - 0.05))
+    fr = FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=0.06", fc="white", ec="none", zorder=z)
+    ax.add_patch(fr)
+    hb = Rectangle((x, y + h - HB), w, HB, fc="#f3f2ef", ec="none", zorder=z + 0.01)
+    ax.add_patch(hb); hb.set_clip_path(fr)
+    ax.plot([x, x + w], [y + h - HB] * 2, color=tint(c, 0.35), lw=0.4, zorder=z + 0.02)
+    box(ax, x, y, w, h, "none", tint(c, 0.6), r=0.06, lw=0.5, z=z + 0.03, ls=(0, (3, 2)) if dashed else "-")
+    dark = tuple(0.78 * np.array(mcolors.to_rgb(c)))
+    t = label(ax, x + tx, y + h - HB / 2, title.upper(), size=size, color=dark if key != "ctx" else INK2,
+              ha="left", fontweight="bold", zorder=z + 0.1)
+    r_ = ax.figure.canvas.get_renderer()
+    while t.get_window_extent(r_).width / ax.figure.dpi > w - tx - 0.10 and size > 4:
+        size -= 0.2; t.set_fontsize(size)
+
+
+def path(ax, pts, color=FLOW, lw=0.6, r=0.07, head=True, z=2):
+    """Polyline with rounded corners (quadratic arcs of radius r) and an arrow head at its end."""
+    P = [np.asarray(p, float) for p in pts]
+    verts, codes = [P[0]], [MPath.MOVETO]
+    for a, b, c in zip(P[:-2], P[1:-1], P[2:]):
+        d1, d2 = b - a, c - b
+        l1, l2 = np.linalg.norm(d1), np.linalg.norm(d2)
+        rr = min(r, l1 / 2, l2 / 2)
+        verts += [b - d1 / l1 * rr, b, b + d2 / l2 * rr]; codes += [MPath.LINETO, MPath.CURVE3, MPath.CURVE3]
+    verts.append(P[-1]); codes.append(MPath.LINETO)
+    ax.add_patch(FancyArrowPatch(path=MPath(verts, codes), arrowstyle="-|>" if head else "-", mutation_scale=6,
+                                 lw=lw, color=color, zorder=z, joinstyle="round", capstyle="round"))
+
+
+def arrow(ax, x1, y1, x2, y2, color=FLOW, lw=0.6):
+    path(ax, [(x1, y1), (x2, y2)], color=color, lw=lw, z=3)
 
 
 def dot(ax, x, y, color):
     ax.add_patch(Circle((x, y), 0.017, fc=color, ec="none", zorder=4))
 
 
-def node(ax, x, y, sym, color=INK2, fc="white", r=0.07):
+def node(ax, x, y, sym, color=INK2, fc="white", r=0.065):
     ax.add_patch(Circle((x, y), r, fc=fc, ec=color, lw=0.8, zorder=5))
-    label(ax, x, y + 0.004, sym, size=8, color=color)
+    label(ax, x, y + 0.004, sym, size=7.5, color=color)
 
 
 def dots(ax, x, y, orient="v", gap=0.035, r=0.009, color=MUTED):
@@ -87,14 +123,16 @@ def dots(ax, x, y, orient="v", gap=0.035, r=0.009, color=MUTED):
 
 
 def strip(ax, x, y, w, h, vals, rgb, z=4):
-    cw = w / len(vals); v = np.abs(vals) / np.abs(vals).max()
+    """A vector of numbers as a row of cells. Hue = what the vector is (the colour of the module it comes from, or of
+    its view); shade = its value, light for the lowest and dark for the highest."""
+    v = np.asarray(vals, float); cw = w / len(v); sv = (v - v.min()) / max(v.max() - v.min(), 1e-9)
     ax.add_patch(Rectangle((x, y), w, h, fc="white", ec="none", zorder=z))
-    for i, a in enumerate(v):
-        ax.add_patch(Rectangle((x + i * cw, y), cw, h, fc=rgb, alpha=0.12 + 0.88 * a, ec="none", zorder=z))
+    for i, a in enumerate(sv):
+        ax.add_patch(Rectangle((x + i * cw, y), cw, h, fc=rgb, alpha=0.10 + 0.85 * a, ec="none", zorder=z))
     ax.add_patch(Rectangle((x, y), w, h, fc="none", ec=LINE, lw=0.4, zorder=z + 0.5))
 
 
-def deck(ax, x, y, vals, rgb, n=3, d=0.03):
+def deck(ax, x, y, vals, rgb, n=3, d=0.026):
     """n profiles (one per cell line x plate); the front strip's lower-left corner at (x, y)."""
     for k in reversed(range(n)):
         strip(ax, x + k * d, y + k * d, SW, SH, np.roll(vals, 3 * k) * (1 - 0.15 * k), rgb, z=4 + 2 * (n - k))
@@ -120,21 +158,61 @@ def matrix(ax, x, y, s, K, rgb, has=(True, True, True), hl_last=False, z=4):
         ax.add_patch(Rectangle((x, y), s, c, fc="none", ec=OURS, lw=1.3, zorder=z + 2))
 
 
-def axis_labels(ax, x, y, s, size=5.5):
+def axis_labels(ax, x, y, s, size=5.5, cols="top"):
     c = s / 4
     for r, i in enumerate(ORDER):
         bold = "bold" if i == QUERY else None
+        cy = y + s + 0.035 if cols == "top" else y - 0.035
         if i is None:
             dots(ax, x - 0.05, y + s - (r + 0.5) * c, "v", gap=0.022, r=0.006, color=INK2)
-            dots(ax, x + (r + 0.5) * c, y + s + 0.06, "h", gap=0.022, r=0.006, color=INK2)
+            dots(ax, x + (r + 0.5) * c, cy + (0.025 if cols == "top" else -0.025), "h", gap=0.022, r=0.006, color=INK2)
         else:
             label(ax, x - 0.035, y + s - (r + 0.5) * c, LETTER[i], size=size, color=INK2, ha="right",
                   fontweight=bold)
-            label(ax, x + (r + 0.5) * c, y + s + 0.035, LETTER[i], size=size, color=INK2, va="bottom",
-                  fontweight=bold)
+            label(ax, x + (r + 0.5) * c, cy, LETTER[i], size=size, color=INK2,
+                  va="bottom" if cols == "top" else "top", fontweight=bold)
 
 
-# ---------------------------------------------------------------- icons
+# ---------------------------------------------------------------- view icons (s = icon height, centred at x, y)
+def icon_fp(ax, x, y, s, c=VIEW["chem"]):
+    """Fingerprint: nested ridges open at the bottom."""
+    for k in range(4):
+        rr = (0.12 + 0.13 * k) * s
+        ax.add_patch(Arc((x, y - 0.08 * s), 1.6 * rr, 2.0 * rr, theta1=-40 + 6 * k, theta2=220 - 6 * k, color=c,
+                         lw=0.55, zorder=8))
+
+
+def icon_protein(ax, x, y, s, c=VIEW["tgt"]):
+    """Protein with a binding pocket and a small ligand in it."""
+    ax.add_patch(Wedge((x - 0.05 * s, y), 0.46 * s, 32, 328, fc=tint(c, 0.55), ec=tint(c, 1.0), lw=0.5, zorder=8))
+    ax.add_patch(Polygon([(x + 0.12 * s, y), (x + 0.26 * s, y + 0.12 * s), (x + 0.40 * s, y),
+                          (x + 0.26 * s, y - 0.12 * s)], fc=INK2, ec="none", zorder=9))
+
+
+def icon_moa(ax, x, y, s, c=VIEW["moa"]):
+    """Mechanism: a pathway step blocked by an inhibition bar (node -> node -| )."""
+    dc = tint(c, 1.0) if c != VIEW["moa"] else "#c64f86"
+    for dx in (-0.42, 0.02):
+        ax.add_patch(Circle((x + dx * s, y), 0.13 * s, fc=tint(c, 0.6), ec=dc, lw=0.5, zorder=8))
+    ax.plot([x - 0.29 * s, x - 0.13 * s], [y, y], color=dc, lw=0.6, zorder=8)
+    ax.add_patch(Polygon([(x - 0.11 * s, y), (x - 0.18 * s, y + 0.06 * s), (x - 0.18 * s, y - 0.06 * s)], fc=dc,
+                         ec="none", zorder=8))
+    ax.plot([x + 0.15 * s, x + 0.40 * s], [y, y], color=dc, lw=0.6, zorder=8)
+    ax.plot([x + 0.40 * s, x + 0.40 * s], [y - 0.16 * s, y + 0.16 * s], color=dc, lw=0.9, zorder=8)
+
+
+def icon_cp(ax, x, y, s, c=VIEW["morph"]):
+    """Cell Painting: a stained cell on a dark field (cytoplasm in the view colour, nucleus blue)."""
+    ax.add_patch(FancyBboxPatch((x - 0.45 * s, y - 0.45 * s), 0.9 * s, 0.9 * s, boxstyle=f"round,pad=0,"
+                                f"rounding_size={0.12 * s}", fc="#1e1a3a", ec="none", zorder=8))
+    ax.add_patch(Ellipse((x, y), 0.74 * s, 0.50 * s, angle=20, fc=c, ec="none", alpha=0.95, zorder=8.5))
+    ax.add_patch(Circle((x + 0.05 * s, y + 0.01 * s), 0.14 * s, fc="#5fb3ff", ec="none", zorder=9))
+
+
+ICON = {"chem": icon_fp, "tgt": icon_protein, "moa": icon_moa, "morph": icon_cp}
+
+
+# ---------------------------------------------------------------- context icons
 def well(ax, x, y, r):
     ax.add_patch(Circle((x, y), r, fc=PANEL, ec=INK2, lw=0.7, zorder=3))
     for dx, dy, a in ((-0.35, 0.3, 20), (0.3, 0.32, -30), (-0.3, -0.3, 60), (0.32, -0.25, 10), (0.0, 0.02, -60)):
@@ -153,7 +231,7 @@ def network(ax, x, y, w, h, color):
                 ax.plot([p[0], q[0]], [p[1], q[1]], color=LINE, lw=0.35, zorder=2)
     for layer in pts:
         for p in layer:
-            ax.add_patch(Circle(p, 0.02, fc="white", ec=color, lw=0.7, zorder=3))
+            ax.add_patch(Circle(p, 0.018, fc="white", ec=color, lw=0.7, zorder=3))
 
 
 def syringe_plate(ax, x, y, color=INK2):
@@ -164,21 +242,15 @@ def syringe_plate(ax, x, y, color=INK2):
         for j in range(2):
             ax.add_patch(Circle((x + 0.045 + i * 0.07, y + 0.035 + j * 0.05), 0.017, fc="white", ec=color, lw=0.4,
                                 zorder=6))
-    wx, wy = x + 0.045 + 2 * 0.07, y + 0.085                     # target well
-    ax.add_patch(Circle((wx, wy), 0.017, fc=OURS_LIGHT, ec=color, lw=0.4, zorder=6))
-    by = wy + 0.06                                              # needle, barrel with liquid, plunger
+    wx, wy = x + 0.045 + 2 * 0.07, y + 0.085
+    ax.add_patch(Circle((wx, wy), 0.017, fc=tint(MOD["meas"], 0.4), ec=color, lw=0.4, zorder=6))
+    by = wy + 0.05
     ax.plot([wx, wx], [wy + 0.012, by], color=color, lw=0.6, zorder=7)
-    ax.add_patch(Rectangle((wx - 0.022, by), 0.044, 0.11, fc="white", ec=color, lw=0.6, zorder=7))
-    ax.add_patch(Rectangle((wx - 0.022, by), 0.044, 0.045, fc=OURS_LIGHT, ec="none", zorder=7.5))
-    ax.plot([wx - 0.03, wx + 0.03], [by + 0.11, by + 0.11], color=color, lw=0.6, zorder=7)
-    ax.plot([wx, wx], [by + 0.11, by + 0.15], color=color, lw=0.6, zorder=7)
-    ax.plot([wx - 0.02, wx + 0.02], [by + 0.15, by + 0.15], color=color, lw=0.9, zorder=7)
-
-
-def cell_icon(ax, x, y, s):
-    ax.add_patch(Rectangle((x - 0.45 * s, y - 0.45 * s), 0.9 * s, 0.9 * s, fc="#1e1a3a", ec="none", zorder=6))
-    ax.add_patch(Ellipse((x, y), 0.72 * s, 0.5 * s, angle=20, fc=VIEW["morph"], ec="none", alpha=0.9, zorder=7))
-    ax.add_patch(Circle((x + 0.05 * s, y), 0.14 * s, fc="#5fb3ff", ec="none", zorder=8))
+    ax.add_patch(Rectangle((wx - 0.022, by), 0.044, 0.10, fc="white", ec=color, lw=0.6, zorder=7))
+    ax.add_patch(Rectangle((wx - 0.022, by), 0.044, 0.04, fc=tint(MOD["meas"], 0.4), ec="none", zorder=7.5))
+    ax.plot([wx - 0.03, wx + 0.03], [by + 0.10, by + 0.10], color=color, lw=0.6, zorder=7)
+    ax.plot([wx, wx], [by + 0.10, by + 0.13], color=color, lw=0.6, zorder=7)
+    ax.plot([wx - 0.02, wx + 0.02], [by + 0.13, by + 0.13], color=color, lw=0.9, zorder=7)
 
 
 # ---------------------------------------------------------------- structure
@@ -217,8 +289,8 @@ def molecule(ax, st, x, y, w, h, color=INK2, size=3.8, lw=0.5):
 
 
 # ---------------------------------------------------------------- parts
-CW, CH = 2.40, 0.70                          # card
-SEC, SGAP = 0.112, 0.016                     # view section height and gap
+CW, CH = 2.34, 0.60                          # card
+SEC, SGAP = 0.094, 0.012                     # view section height and gap
 
 
 def _short_targets(ts):
@@ -237,108 +309,139 @@ def _join_moa(ms, suf=" inhibitor"):
 
 def card(ax, x, top, k, S):
     q = k == QUERY
-    box(ax, x, top - CH, CW, CH, "white", OURS if q else LINE, lw=1.1 if q else 0.7, z=1)
-    label(ax, x + 0.08, top - 0.085, TITLE[k], size=7, ha="left", fontweight="bold")
-    label(ax, x + CW - 0.08, top - 0.085, "unprofiled" if q else "profiled", size=5.8, color=OURS if q else MUTED,
-          ha="right", style="italic")
-    molecule(ax, S["structures"][k], x + 0.06, top - CH + 0.04, 0.80, CH - 0.20)
-    sx = x + 0.92; sw = CW - 0.92 - 0.07
+    box(ax, x + 0.01, top - CH - 0.01, CW, CH, "black", "none", lw=0, z=0.95, alpha=0.05)
+    box(ax, x, top - CH, CW, CH, "white", OURS if q else LINE, lw=0.8 if q else 0.45, z=1)
+    t = label(ax, x + 0.07, top - 0.075, f"{TITLE[k]} ({LETTER[k]})", size=6.6, ha="left", fontweight="bold")
+    label(ax, x + CW - 0.07, top - 0.075, "unprofiled query" if q else "profiled", size=5.3,
+          color=OURS if q else MUTED, ha="right", style="italic")
+    molecule(ax, S["structures"][k], x + 0.05, top - CH + 0.03, 0.78, CH - 0.17)
+    sx = x + 0.88; sw = CW - 0.88 - 0.06
     for r, (key, _) in enumerate(VIEWS):
-        sy = top - 0.17 - r * (SEC + SGAP) - SEC; yc = sy + SEC / 2
+        sy = top - 0.15 - r * (SEC + SGAP) - SEC; yc = sy + SEC / 2
         has = S["has"][key][k]
         if has:
-            box(ax, sx, sy, sw, SEC, tint(VIEW[key], 0.30), "none", r=0.02, z=2)
+            box(ax, sx, sy, sw, SEC, tint(VIEW[key], 0.28), "none", r=0.02, z=2)
         else:
             box(ax, sx, sy, sw, SEC, "white", LINE, r=0.02, lw=0.4, z=2, hatch="//////")
-        tx = sx + 0.05
+        ICON[key](ax, sx + 0.065, yc, 0.085)
+        tx = sx + 0.13
         if key == "chem":                    # Morgan fingerprint: the real on-bits as a barcode
-            fit(ax, tx, yc, "Morgan fingerprint", 0.70, 5.2)
-            bx0, bw = sx + 0.80, sw - 0.85
-            ax.add_patch(Rectangle((bx0, sy + 0.022), bw, SEC - 0.044, fc="white", ec="none", zorder=3))
+            bx0, bw = tx, sw - 0.17
+            ax.add_patch(Rectangle((bx0, sy + 0.02), bw, SEC - 0.04, fc="white", ec="none", zorder=3))
             for b in S["fp_bits"][k]:
                 xb = bx0 + bw * b / 2047
-                ax.plot([xb, xb], [sy + 0.028, sy + SEC - 0.028], color=VIEW["chem"], lw=0.45, zorder=4)
+                ax.plot([xb, xb], [sy + 0.026, sy + SEC - 0.026], color=VIEW["chem"], lw=0.45, zorder=4)
         elif key == "tgt":
-            fit(ax, tx, yc, ", ".join(_short_targets(S["target"][k])), sw - 0.08, 5.2)
+            fit(ax, tx, yc, ", ".join(_short_targets(S["target"][k])), sw - 0.16, 5.0)
         elif key == "moa":
-            fit(ax, tx, yc, _join_moa(S["moa"][k][::-1]), sw - 0.08, 5.2)
-        elif has:
-            cell_icon(ax, tx + 0.04, yc, 0.085)
-            fit(ax, tx + 0.11, yc, "Cell Painting profile", sw - 0.2, 5.2)
+            fit(ax, tx, yc, _join_moa(S["moa"][k][::-1]), sw - 0.16, 5.0)
+        elif has:                            # Cell Painting: the profile vector (z-scores on 40 features)
+            v = np.array(S["cp_profile"][k])
+            strip(ax, tx, sy + 0.02, sw - 0.17, SEC - 0.04, v, VIEW["morph"], z=4)
         else:
-            fit(ax, tx, yc, "no Cell Painting profile", sw - 0.08, 5.2, color=MUTED,
+            fit(ax, tx, yc, "no Cell Painting profile", sw - 0.16, 5.0, color=MUTED,
                 bbox=dict(boxstyle="square,pad=0.1", fc="white", ec="none"))
 
 
-def part_cards(ax, x, top, S, gap=0.06, ell=0.20):
+def part_cards(ax, x, top, S, gap=0.05, ell=0.16):
     """Profiled cards, an ellipsis, then the query card. Returns right-edge centres and the bottom."""
     ys, ends = top, []
     for k in (0, 2):
         card(ax, x, ys, k, S); ends.append((x + CW, ys - CH / 2)); ys -= CH + gap
-    dots(ax, x + CW / 2, ys - ell / 2 + gap / 2, "v", gap=0.04, r=0.012)
+    dots(ax, x + CW / 2, ys - ell / 2 + gap / 2, "v", gap=0.035, r=0.011)
     ends.append((x + CW, ys - ell / 2 + gap / 2))
     ys -= ell
     card(ax, x, ys, QUERY, S); ends.append((x + CW, ys - CH / 2))
     return ends, ys - CH
 
 
-KS, KD = 0.92, 0.15                          # kernel size; deck offset
+KS, KD, TAB = 0.80, 0.135, 0.115             # kernel size; deck offset; tab height
 
 
-def part_kernels(ax, x, top, S):
-    """Deck of view kernels, structure in front and the others behind towards the lower right; (x, top) = the
-    front matrix's top-left. View names sit small in the empty lower-left corner. Returns the front matrix's
-    left-centre and the deck's right edge."""
+def part_kernels(ax, x, y, S):
+    """Tabbed deck of view kernels: structure in front at the lower left, the others behind towards the upper right,
+    each card topped by a tab with the view's icon and name. (x, y) = the front matrix's lower-left corner.
+    Returns the front matrix's left-centre and the deck's right edge."""
     for k in reversed(range(4)):
         key, name = VIEWS[k]
-        lx, ly = x + k * KD, top - KS - k * KD
+        lx, ly = x + k * KD, y + k * KD
+        c = VIEW[key]
+        tc = tint(c, 1.0) if key != "moa" else "#c64f86"
+        ax.add_patch(FancyBboxPatch((lx, ly), KS, KS + TAB, boxstyle="round,pad=0,rounding_size=0.025",
+                                    fc=tint(c, 0.14) if k else "white", ec=tint(tc, 0.7), lw=0.5, zorder=3 + 0.3 * (4 - k)))
+        ax.add_patch(FancyBboxPatch((lx, ly + KS), KS, TAB, boxstyle="round,pad=0,rounding_size=0.025",
+                                    fc=tint(c, 0.42), ec=tint(tc, 0.7), lw=0.5, zorder=3.1 + 0.3 * (4 - k)))
+        z0 = 3.2 + 0.3 * (4 - k)
+        ICON[key](ax, lx + 0.07, ly + KS + TAB / 2, 0.075)
+        t = label(ax, lx + 0.13, ly + KS + TAB / 2, name, size=5.0, color=INK, ha="left", fontweight="bold")
+        t.set_zorder(z0 + 5)
         if k == 0:
-            ax.add_patch(Rectangle((lx, ly), KS, KS, fc="white", ec="none", zorder=3.6))
-            matrix(ax, lx, ly, KS, S["kernels"][key], VIEW[key], has=S["has"][key], z=4)
-            axis_labels(ax, lx, ly, KS, size=6.3)
-        else:
-            ax.add_patch(Rectangle((lx, ly), KS, KS, fc=tint(VIEW[key], 0.35), ec=VIEW[key], lw=0.7,
-                                   zorder=3 - 0.1 * k))
-        label(ax, x - 0.13, top - KS - KD - 0.07 - k * 0.085, name, size=4.8, color=VIEW[key], ha="left",
-              fontweight="bold")
-    return (x, top - KS / 2), x + 3 * KD + KS
+            matrix(ax, lx, ly, KS, S["kernels"][key], VIEW[key], has=S["has"][key], z=z0 + 0.5)
+            axis_labels(ax, lx, ly, KS, size=6.0, cols="bottom")
+    return (x, y + KS / 2), x + 3 * KD + KS
 
 
-FW, FH, FS = 1.20, 0.98, 0.62                # fusion box width, height; matrix size
+FS = KS                                      # fusion matrices, the size of the view kernels
 
 
-def part_fusion(ax, xc, top, S):
-    """Fusion + normalization centred on xc. Returns the matrix's bottom-centre (the query row) and left-middle."""
-    x = xc - FW / 2
-    box(ax, x, top - FH, FW, FH, OURS_LIGHT, OURS)
-    label(ax, xc, top - 0.10, "Fusion + normalization", size=6.3)
-    mx, my = xc - FS / 2, top - FH + 0.08
-    matrix(ax, mx, my, FS, S["kernels"]["norm"], OURS, hl_last=True)
-    axis_labels(ax, mx, my, FS)
-    return (xc, my), (x, top - FH / 2)
+def matrix_mix(ax, x, y, s, S, z=4):
+    """The weighted sum sum_v w_v K_v before normalization, in ORDER (D, V, ..., M): every cell split into one stripe
+    per view, stripe width proportional to w_v, shade = that view's similarity; a view the pair lacks is hatched, so a
+    compound with a missing view has a weaker diagonal (lower self-similarity)."""
+    c = s / 4; g = 0.03 * c / 0.16
+    wt = np.array([S["weights"][k] for k, _ in VIEWS]); wt = wt / wt.sum()
+    for r, i in enumerate(ORDER):
+        for q, j in enumerate(ORDER):
+            cx, cy = x + q * c, y + s - (r + 1) * c
+            ax.add_patch(Rectangle((cx, cy), c, c, fc="white", ec="none", zorder=z))
+            if i is None or j is None:
+                dots(ax, cx + c / 2, cy + c / 2, "d" if i is None and j is None else "v" if i is None else "h",
+                     gap=g, r=0.007)
+                continue
+            x0 = cx
+            for (key, _), wv in zip(VIEWS, wt):
+                sw_ = c * wv
+                if S["has"][key][i] and S["has"][key][j]:
+                    ax.add_patch(Rectangle((x0, cy), sw_, c, fc=VIEW[key], alpha=0.06 + 0.94 * S["kernels"][key][i][j],
+                                           ec="none", zorder=z))
+                else:
+                    ax.add_patch(Rectangle((x0, cy), sw_, c, fc="white", ec=LINE, lw=0.2, hatch="//////", zorder=z))
+                x0 += sw_
+            ax.add_patch(Rectangle((cx, cy), c, c, fc="none", ec="white", lw=0.5, zorder=z + 0.2))
+    ax.add_patch(Rectangle((x, y), s, s, fc="none", ec=INK2, lw=0.5, zorder=z + 1))
 
 
-TH = 1.22
+def part_fusion(ax, xl, top, bot, my, S):
+    """Fusion + normalization from xl to the right edge: the normalised multi-view kernel (unit diagonal), centred.
+    Returns its bottom-centre (the query row) and the module's left edge at its mid-height."""
+    module(ax, xl, bot, W - 0.03 - xl, top - bot, "Fusion + normalization", "eff")
+    nx = (xl + W - 0.03) / 2 - FS / 2
+    matrix(ax, nx, my, FS, S["kernels"]["norm"], OURS, hl_last=True)
+    axis_labels(ax, nx, my, FS, size=6.0, cols="bottom")
+    return (nx + FS / 2, my), (xl, my + FS / 2)
+
+
+TH = 1.17
 
 
 def part_transfer(ax, x, top, xc, vals, S):
-    """Kernel transfer with its top-left at (x, top); the similarity column sits at xc and sets the width.
-    Returns anchors."""
-    TW = xc - x + 0.66
-    box(ax, x, top - TH, TW, TH, OURS_LIGHT, OURS)
-    label(ax, x + 0.07, top - 0.09, "Kernel transfer", size=6.3, ha="left")
+    """Kernel regression with its top-left at (x, top); the similarity column sits at xc and sets the width."""
+    TW = W - 0.03 - x
+    module(ax, x, top - TH, TW, TH, "Kernel regression", "eff")
     k = np.array(S["kernels"]["norm"])[QUERY]
-    A, c = {}, 0.105
+    A, c = {}, 0.10
     sx = x + 0.17; sw = xc - c / 2 - 0.05 - sx
-    ox = x + TW - 0.06 - SW
+    SWo = 0.22                               # output strips (Σ over profiled compounds)
+    ox = xc + c / 2 + 0.13
     for r, (name, key, qual) in enumerate((("Shared", "g", "all lines"), ("Per line", "h", "line ℓ"))):
-        y0 = top - 0.27 - r * 0.50
-        label(ax, x + 0.07, y0, name, size=6, ha="left", fontweight="bold")
-        label(ax, x + TW - 0.07, y0, qual, size=5.3, color=MUTED, ha="right")
-        ys = [y0 - 0.14, y0 - 0.14 - (SH + 0.03)]
+        y0 = top - 0.25 - r * 0.47
+        t = label(ax, x + 0.07, y0, name, size=5.8, ha="left")
+        r_ = ax.figure.canvas.get_renderer(); wn = t.get_window_extent(r_).width / ax.figure.dpi
+        label(ax, x + 0.07 + wn + 0.05, y0, f"({qual})", size=5.2, color=MUTED, ha="left")
+        ys = [y0 - 0.13, y0 - 0.13 - (SH + 0.03)]
         for t, i in enumerate((0, 2)):
             label(ax, x + 0.10, ys[t], LETTER[i], size=5.3, color=INK2)
-            strip(ax, sx, ys[t] - SH / 2, sw, SH, vals[f"res_{key}_{i}"], INK2)
+            strip(ax, sx, ys[t] - SH / 2, sw, SH, vals[f"res_{key}_{i}"], tint(MOD["meas"], 1.0))
             ax.add_patch(Rectangle((xc - c / 2, ys[t] - c / 2), c, c, fc=OURS, alpha=0.06 + 0.94 * k[i],
                                    ec=INK2, lw=0.4, zorder=5))
         ye = ys[1] - (SH + 0.02)
@@ -347,95 +450,120 @@ def part_transfer(ax, x, top, xc, vals, S):
         yb = (ys[0] + ys[1]) / 2
         ax.plot([xc + c / 2 + 0.035] * 2, [ys[1] - c / 2, ys[0] + c / 2], color=OURS, lw=0.7, zorder=4)
         arrow(ax, xc + c / 2 + 0.035, yb, ox - 0.02, yb, color=OURS)
-        label(ax, (xc + c / 2 + ox) / 2 + 0.015, yb + 0.065, "Σ", size=6, color=OURS)
-        strip(ax, ox, yb - SH / 2, SW, SH, vals[key], OURS)
-        A[key] = (ox + SW, yb); A[f"in{r}"] = (x, yb); A[f"w{r}"] = (ys[0] + c / 2, ys[1] - c / 2)
-    A["bottom"] = top - TH
+        label(ax, (xc + c / 2 + ox) / 2 + 0.015, yb + 0.06, "Σ", size=6, color=OURS)
+        strip(ax, ox, yb - SH / 2, SWo, SH, vals[key], OURS)
+        A[key] = (ox + SWo, yb); A[f"in{r}"] = (x, yb); A[f"w{r}"] = (ys[0] + c / 2, ys[1] - c / 2)
+    xp = ox + SWo + 0.12; yp = A["h"][1]      # shared + per line at the per-line row; the sum leaves downwards
+    path(ax, [A["g"], (xp, A["g"][1]), (xp, yp + 0.065)], color=OURS)
+    path(ax, [A["h"], (xp - 0.065, yp)], color=OURS)
+    node(ax, xp, yp, "+", color=OURS)
+    A["sum"] = (xp, yp - 0.065)
+    A["bottom"] = top - TH; A["right"] = x + TW
     return A
 
 
-def part_column(ax, xc, A, vals, ys):
-    """a g + b h -> compound effect -> interaction -> sum -> response, straight down at xc (labels on the left).
-    ys = node heights."""
-    y_sum, y_u, y_x, y_p, y_r = ys
-    for key in ("g", "h"):                   # both terms run straight to the column and turn down into the sum
-        ax.plot([A[key][0], xc], [A[key][1]] * 2, color=OURS, lw=0.8, zorder=2, solid_joinstyle="miter")
-    ax.plot([xc, xc], [A["g"][1], A["h"][1]], color=OURS, lw=0.8, zorder=2)
-    dot(ax, xc, A["h"][1], OURS)
-    arrow(ax, xc, A["h"][1], xc, y_sum + 0.07, color=OURS)
-    node(ax, xc, y_sum, "+", color=OURS)
-    arrow(ax, xc, y_sum - 0.07, xc, y_u + SH / 2, color=OURS)
-    strip(ax, xc - SW / 2, y_u - SH / 2, SW, SH, vals["u"], OURS)
-    label(ax, xc - SW / 2 - 0.05, y_u, "Compound effect", size=6.3, ha="right")
-    arrow(ax, xc, y_u - SH / 2, xc, y_x + 0.07, color=OURS)
-    node(ax, xc, y_x, "×", color=OURS, fc=OURS_LIGHT)
-    label(ax, xc - 0.10, y_x - 0.10, "Interaction", size=6.3, ha="right")
-    arrow(ax, xc, y_x - 0.07, xc, y_p + 0.07, color=OURS)
-    node(ax, xc, y_p, "+")
-    arrow(ax, xc, y_p - 0.07, xc, y_r + SH / 2, color=INK2)
-    strip(ax, xc - SW / 2, y_r - SH / 2, SW, SH, vals["resp"], INK2)
-    label(ax, xc - SW / 2 - 0.06, y_r + 0.01, "Response", size=6.3, ha="right", va="bottom")
-    label(ax, xc - SW / 2 - 0.06, y_r - 0.01, "Mitoxantrone", size=5.3, color=OURS, ha="right", va="top",
-          style="italic")
-    return {"x": (xc - 0.07, y_x), "p": (xc - 0.07, y_p)}
+BW = 0.76                                    # width of the boxes in the output column
+
+
+def small_box(ax, xc, yc, title, key, vals=None, rgb=None, h=0.27, w=BW):
+    """A titled box in the output column; returns its top and bottom y."""
+    c = MOD[key]                              # same treatment as the modules: white, soft shadow, hairline border
+    box(ax, xc - w / 2 + 0.012, yc - h / 2 - 0.012, w, h, "black", "none", r=0.04, lw=0, z=2.9, alpha=0.06)
+    box(ax, xc - w / 2, yc - h / 2, w, h, "white", tint(c, 0.75), r=0.04, lw=0.6, z=3)
+    t = label(ax, xc, yc + h / 2 - 0.065, title, size=5.3, color=INK, fontweight="bold")
+    r_ = ax.figure.canvas.get_renderer(); size = 5.3
+    while t.get_window_extent(r_).width / ax.figure.dpi > w - 0.10 and size > 4:
+        size -= 0.1; t.set_fontsize(size)
+    if vals is not None:
+        strip(ax, xc - SW / 2, yc - h / 2 + 0.04, SW, SH, vals, rgb, z=4.5)
+    return yc + h / 2, yc - h / 2
+
+
+def part_output(ax, A, xu, xi, y_x, y_p, xr):
+    """Compound effect under the regression's sum (at the interaction's height) -> left into the interaction -> down
+    to + context -> right to the response. Returns the inputs of the interaction (control PCs, from the left) and of
+    the sum (context, from the left)."""
+    ut, ub = small_box(ax, xu, y_x, "Compound effect", "eff", None)
+    strip(ax, xu - SW / 2, y_x - 0.105, SW, SH, VALS["u"], OURS, z=4.5)
+    arrow(ax, A["sum"][0], A["sum"][1], A["sum"][0], ut, color=OURS)
+    xt, xb = small_box(ax, xi, y_x + 0.065, "Interaction", "pred", h=0.33)
+    node(ax, xi, y_x, "×", color=MOD["pred"], fc="white", r=0.052)
+    arrow(ax, xu - BW / 2, y_x, xi + BW / 2, y_x, color=OURS)
+    node(ax, xi, y_p, "+", color=INK2)
+    arrow(ax, xi, xb, xi, y_p + 0.065, color=MOD["pred"])
+    small_box(ax, xr, y_p, "Response (M)", "pred", None)
+    strip(ax, xr - SW / 2, y_p - 0.105, SW, SH, VALS["resp"], MOD["pred"], z=4.5)
+    arrow(ax, xi + 0.065, y_p, xr - BW / 2, y_p, color=FLOW)
+    return {"x": (xi - BW / 2, y_x), "p": (xi - 0.065, y_p)}
 
 
 def part_context(ax, x, yT, yD, yB, vals):
     """Cells -> DMSO / treated; backbone; residual. Rows at heights yT (treated), yD (DMSO), yB (backbone)."""
     A = {}
     wx = x + 0.22
-    well(ax, wx, yD, 0.16)
-    label(ax, wx, yD - 0.28, "cell line\n× plate", size=5.5, color=MUTED, linespacing=1.0)
-    dx = x + 0.52
-    arrow(ax, wx + 0.17, yD, dx, yD, color=CTX)
+    well(ax, wx, yD, 0.15)
+    label(ax, wx, yD - 0.27, "cell line\n× plate", size=5.2, color=MUTED, linespacing=0.95)
+    dx = x + 0.50
+    arrow(ax, wx + 0.16, yD, dx, yD, color=FLOW)
     strip(ax, dx, yD - SH / 2, SW, SH, vals["ctl"], CTX)
-    label(ax, dx + SW / 2, yD + 0.13, "DMSO", size=6.3)
+    label(ax, dx + SW / 2, yD + 0.12, "DMSO control", size=5.8)
     A["dmso"] = (dx + SW, yD)
     # treated: the same cells with a profiled compound added
-    path(ax, [(wx, yD + 0.17), (wx, yT), (wx + 0.17, yT)], color=INK2)
-    syringe_plate(ax, wx + 0.19, yT - 0.06)
-    tx = wx + 0.68
-    arrow(ax, wx + 0.51, yT, tx, yT, color=INK2)
-    deck(ax, tx, yT - SH / 2, vals["trt"], INK2)
-    label(ax, tx + SW / 2 + 0.03, yT + 0.18, "Treated", size=6.3)
-    m1 = tx + SW + 0.22
-    arrow(ax, tx + SW + 0.07, yT, m1 - 0.07, yT, color=INK2)
+    path(ax, [(wx, yD + 0.16), (wx, yT), (wx + 0.17, yT)], color=FLOW)
+    syringe_plate(ax, wx + 0.19, yT - 0.07)
+    tx = wx + 0.66
+    arrow(ax, wx + 0.51, yT, tx, yT, color=FLOW)
+    deck(ax, tx, yT - SH / 2, vals["trt"], tint(MOD["meas"], 1.0))
+    label(ax, tx + SW / 2 + 0.03, yT - 0.12, "Treated", size=5.6)
+    m1 = tx + SW + 0.21
+    arrow(ax, tx + SW + 0.07, yT, m1 - 0.065, yT, color=FLOW)
     node(ax, m1, yT, "−")
-    path(ax, [(dx + SW, yD), (m1, yD), (m1, yT - 0.07)], color=CTX)
-    dot(ax, m1, yD, CTX)
-    mdx = m1 + 0.17
-    arrow(ax, m1 + 0.07, yT, mdx, yT, color=INK2)
-    deck(ax, mdx, yT - SH / 2, vals["dlt"], INK2)
-    label(ax, mdx + SW / 2 + 0.03, yT + 0.18, "Measured Δ", size=6.3)
+    path(ax, [(dx + SW, yD), (m1, yD), (m1, yT - 0.065)], color=FLOW)
+    mdx = m1 + 0.16
+    arrow(ax, m1 + 0.065, yT, mdx, yT, color=FLOW)
+    deck(ax, mdx, yT - SH / 2, vals["dlt"], tint(MOD["meas"], 1.0))
+    label(ax, mdx + SW / 2 + 0.03, yT - 0.12, "Measured Δ", size=5.6)
     # backbone on the DMSO profile
-    bx = dx + SW / 2; nx = dx + SW + 0.12
-    path(ax, [(bx, yD - SH / 2), (bx, yB), (nx, yB)], color=CTX)
-    box(ax, nx, yB - 0.15, 0.46, 0.30, CTX_LIGHT, CTX)
-    network(ax, nx, yB - 0.15, 0.46, 0.30, CTX)
-    label(ax, nx + 0.23, yB - 0.23, "Backbone", size=6.3)
-    cx = nx + 0.58
-    arrow(ax, nx + 0.46, yB, cx, yB, color=CTX)
+    bx = dx + SW / 2; nx = dx + SW + 0.10
+    path(ax, [(bx, yD - SH / 2), (bx, yB), (nx, yB)], color=FLOW)
+    box(ax, nx, yB - 0.14, 0.44, 0.28, "white", CTX, r=0.04)
+    network(ax, nx, yB - 0.14, 0.44, 0.28, CTX)
+    label(ax, nx + 0.22, yB - 0.21, "Backbone", size=5.8)
+    cx = nx + 0.56
+    arrow(ax, nx + 0.44, yB, cx, yB, color=FLOW)
     deck(ax, cx, yB - SH / 2, vals["ctx"], CTX)
-    label(ax, cx + SW / 2 + 0.03, yB - 0.15, "Context", size=6.3)
+    label(ax, cx + SW / 2 + 0.03, yB - 0.14, "Context", size=5.8)
     # residual = measured delta - context
-    rx = mdx + SW + 0.26
-    path(ax, [(mdx + SW + 0.07, yT), (rx - 0.07, yT)], color=INK2)
+    rx = mdx + SW + 0.25
+    path(ax, [(mdx + SW + 0.07, yT), (rx - 0.065, yT)], color=FLOW)
     node(ax, rx, yT, "−")
-    ax.plot([cx + SW + 0.07, rx], [yB, yB], color=CTX, lw=0.8, zorder=2)
-    dot(ax, rx, yB, CTX)
-    path(ax, [(rx, yB), (rx, yT - 0.22), (rx, yT - 0.07)], color=CTX)
-    rsx = rx + 0.17
-    arrow(ax, rx + 0.07, yT, rsx, yT, color=INK2)
-    deck(ax, rsx, yT - SH / 2, vals["res"], INK2)
-    label(ax, rsx + SW / 2 + 0.03, yT + 0.18, "Residual", size=6.3)
-    A["res"] = (rsx + SW + 0.07, yT); A["ctx"] = (rx, yB)
-    box(ax, wx - 0.08, yT - 0.20, rsx + SW + 0.12 - (wx - 0.08), 0.52, "none", MUTED, lw=0.5, ls=(0, (2, 2)), z=0)
-    label(ax, rsx + SW + 0.04, yT + 0.32, "profiled compounds", size=5.3, color=MUTED, ha="right", style="italic",
-          bbox=dict(boxstyle="square,pad=0.15", fc="white", ec="none"))
+    path(ax, [(cx + SW + 0.07, yB), (rx, yB), (rx, yT - 0.065)], color=FLOW)
+    rsx = rx + 0.16
+    arrow(ax, rx + 0.065, yT, rsx, yT, color=FLOW)
+    deck(ax, rsx, yT - SH / 2, vals["res"], tint(MOD["meas"], 1.0))
+    label(ax, rsx + SW / 2 + 0.03, yT - 0.12, "Residual", size=5.6)
+    A["res"] = (rsx + SW + 0.07, yT); A["ctx"] = (cx + SW + 0.07, yB); A["ctx_branch"] = rx
+    A["meas"] = (wx + 0.08, rsx + SW + 0.10)
+    A["ctx_box"] = (x, cx + SW + 0.12)
     return A
 
 
-def toy_vals(G=12):
+def legend(ax, x, top, w):
+    module_h = 0.19 + 0.135 * len(MOD)
+    box(ax, x, top - module_h, w, module_h, "white", LINE, r=0.05, lw=0.6, z=1)
+    label(ax, x + 0.07, top - 0.085, "Modules", size=6.0, ha="left", fontweight="bold")
+    for i, (key, name) in enumerate(MOD_NAME.items()):
+        y = top - 0.20 - i * 0.135
+        c = MOD[key]
+        box(ax, x + 0.06, y - 0.04, 0.11, 0.08, tint(c, 0.10) if key != "pred" else PRED_LIGHT, c, r=0.02, lw=0.8,
+            z=2, ls=(0, (2, 1.5)) if key == "meas" else "-")
+        label(ax, x + 0.21, y, name, size=4.8, ha="left")
+
+
+VALS = {}
+
+
+def toy_vals(G=8):
     v = {"ctl": rng.normal(0, 1, G), "trt": rng.normal(0, 1, G), "ctx": rng.normal(0, 1, G) * 1.4}
     v["dlt"] = v["ctx"] + rng.normal(0, 1, G)
     v["res"] = v["dlt"] - v["ctx"]
@@ -443,45 +571,61 @@ def toy_vals(G=12):
         for i in (0, 2):
             v[f"res_{key}_{i}"] = rng.normal(0, 1, G)
     v["g"] = rng.normal(0, 1, G); v["h"] = v["g"] + 0.5 * rng.normal(0, 1, G); v["u"] = v["g"] + v["h"]
+    v["pcs"] = rng.normal(0, 1, 6)
     v["resp"] = v["ctx"] * 0.5 + v["u"]
     return v
 
 
 # ---------------------------------------------------------------- assembly
 W, H = 6.5, 4.60
-XF = 5.02                                    # fusion box centre = similarity column of the transfer
-XO = 6.16                                    # output column
+GUT = 0.08                                   # gutter between modules
+KMX, KMW = 0.03 + CW + 0.12 + GUT, 1.66      # similarity-kernels module
+XL = KMX + KMW + GUT                         # left edge of the fusion module
+XF = (XL + W - 0.03) / 2                     # normalised kernel's centre = similarity column of the regression
 
 
 def assemble(S, vals):
     fig = plt.figure(figsize=(W, H))
     ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(0, W); ax.set_ylim(0, H); ax.axis("off")
-    top = H - 0.04
-    ends, cbot = part_cards(ax, 0.04, top, S)
-    kx, ktop = 2.76, top - 0.16
-    (kfx, kfy), kright = part_kernels(ax, kx, ktop, S)
-    xb = 0.04 + CW + 0.10                    # cards -> kernel deck
-    for e in ends:
-        ax.plot([e[0] + 0.02, xb], [e[1]] * 2, color=LINE, lw=0.7, zorder=2)
-    ax.plot([xb, xb], [ends[0][1], ends[-1][1]], color=LINE, lw=0.7, zorder=2)
-    path(ax, [(xb, kfy), (kfx - 0.16, kfy)], color=INK2)
-    ftop = top - 0.06
-    (qx, qy), (fl, fm) = part_fusion(ax, XF, ftop, S)
-    path(ax, [(kright + 0.05, fm), (fl, fm)], color=INK2)                   # deck -> fusion
-    yT, yD, yB = 1.75, 0.98, 0.55           # context lane rows; the per-line row of the transfer sits at yT
-    tx = 3.55
-    T = part_transfer(ax, tx, yT + 0.97, XF, vals, S)
-    arrow(ax, qx, qy, qx, T["w0"][0] + 0.003, color=OURS, lw=0.9)          # query row -> similarity weights
+    top = H - 0.03
+    # compound information: cards and view kernels
+    cx0, cw = 0.03, CW + 0.12
+    ends, cbot = part_cards(ax, cx0 + 0.06, top - 0.17, S)
+    module(ax, cx0, cbot - 0.05, cw, top - cbot + 0.05, "Compound information", "info")
+    kmx, kmw = KMX, KMW
+    kmb = 2.86
+    module(ax, kmx, kmb, kmw, top - kmb, "Similarity kernels", "info")
+    kx, ky = kmx + 0.17, kmb + 0.20
+    (kfx, kfy), kright = part_kernels(ax, kx, ky, S)
+    path(ax, [(cx0 + cw, kfy), (kmx, kfy)], color=FLOW)                    # compound information -> kernels
+    # fusion
+    (qx, qy), (fl, fm) = part_fusion(ax, XL, top, kmb, (kmb + top - HB) / 2 - FS / 2 + 0.03, S)
+    path(ax, [(kmx + kmw, fm), (fl, fm)], color=FLOW)                      # kernels -> fusion, at matrix height
+    # context lane and measured responses
+    yT = cbot - 0.05 - GUT - 0.39; yD, yB = 0.98, 0.40     # measured module sits one gutter below the cards
+    A = part_context(ax, 0.10, yT, yD, yB, vals)
+    module(ax, 0.03, yT - 0.22, A["meas"][1] - 0.03, 0.61,
+           "Measured responses for profiled compounds", "meas", dashed=True)
+    module(ax, 0.03, 0.06, A["ctx_box"][1] - 0.03, yD + 0.40 - 0.06, "Context", "ctx", tx=0.42)
+    # kernel regression
+    tx = 3.50
+    T = part_transfer(ax, tx, yT + 0.25 + 0.47 + 0.13 + (SH + 0.03) / 2, XF, vals, S)
+    path(ax, [(qx, qy), (qx, T["w0"][0] + 0.003)], color=OURS, lw=0.75)          # query row -> similarity weights
     ax.plot([qx, qx], [T["w0"][1], T["w1"][0]], color=OURS, lw=0.9, zorder=3)
-    A = part_context(ax, 0.04, yT, yD, yB, vals)
-    rx, ry = A["res"]; br = tx - 0.18                                      # residual -> per line, branch -> shared
-    arrow(ax, rx, ry, tx, T["in1"][1], color=INK2, lw=0.7)
-    path(ax, [(br, ry), (br, T["in0"][1]), (tx, T["in0"][1])], color=INK2, lw=0.7)
+    rx, ry = A["res"]; br = tx - 0.16                                           # residual -> per line and shared
+    path(ax, [(rx, ry), (tx, T["in1"][1])], color=FLOW)
+    path(ax, [(br, ry), (br, T["in0"][1]), (tx, T["in0"][1])], color=FLOW)
     dot(ax, br, ry, INK2)
-    C = part_column(ax, XO, T, vals, (T["bottom"] - 0.03, T["bottom"] - 0.27, yD, yB, 0.17))
-    path(ax, [A["dmso"], (C["x"][0] - 0.25, yD), C["x"]], color=CTX, halo=True)   # control PCs -> interaction
-    label(ax, 4.40, yD + 0.07, "Control PCs", size=5.8, color=INK2, ha="right")
-    path(ax, [A["ctx"], C["p"]], color=CTX)                                # context -> sum
+    # output: compound effect right of the regression; interaction centred below it
+    VALS.update(vals)
+    pcx, xi, xr = 2.78, 3.82, 4.82
+    C = part_output(ax, T, W - 0.03 - BW / 2, xi, yD, yB, xr)
+    # control PCs: their own box on the DMSO line, then straight into the interaction
+    small_box(ax, pcx, yD, "Control PCs", "ctx", h=0.26)
+    strip(ax, pcx - 0.17, yD - 0.10, 0.34, SH, vals["pcs"], CTX, z=4.5)
+    path(ax, [A["dmso"], (pcx - 0.33, yD)], color=FLOW, z=2.6)
+    path(ax, [(pcx + 0.33, yD), C["x"]], color=FLOW)
+    path(ax, [A["ctx"], C["p"]], color=FLOW)
     return fig
 
 
@@ -490,22 +634,7 @@ def main() -> None:
     src = Path(args[0]) if args else FIGDIR
     S = json.loads((src / "fig1_pipeline_source.json").read_text())
     out = Path(args[1]) if len(args) > 1 else None
-    vals = toy_vals()
-    if "--parts" in sys.argv:
-        parts = {
-            "cards": ((CW + 0.1, 3 * CH + 0.4), lambda ax: part_cards(ax, 0.05, 3 * CH + 0.36, S)),
-            "kernels": ((1.72, 1.78), lambda ax: part_kernels(ax, 0.22, 1.64, S)),
-            "fusion": ((1.3, 1.05), lambda ax: part_fusion(ax, 0.65, 1.02, S)),
-            "transfer": ((1.8, 1.3), lambda ax: part_transfer(ax, 0.05, 1.27, 0.97, vals, S)),
-            "context": ((3.45, 1.58), lambda ax: part_context(ax, 0.04, 1.20, 0.74, 0.30, vals)),
-        }
-        for name, ((w, h), draw) in parts.items():
-            fig = plt.figure(figsize=(w, h))
-            ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(0, w); ax.set_ylim(0, h); ax.axis("off")
-            draw(ax)
-            save(fig, f"fig1_part_{name}", (out or FIGDIR) / "fig1_parts", exts=("svg",))
-            plt.close(fig)
-    save(assemble(S, vals), "fig1_pipeline", out)
+    save(assemble(S, toy_vals()), "fig1_pipeline", out)
 
 
 if __name__ == "__main__":
