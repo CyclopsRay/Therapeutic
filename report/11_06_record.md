@@ -1586,3 +1586,6 @@ per fold, as for PCC_plate. Coverage reported: plates and units kept, and the sh
   blue-down / red-up scale (direction of change is the point of (d); colour key at the bottom) — the user may revisit.
 - E: (d) structures drawn on one scale per pair, widths by molecular extent, 0.14 in apart (no touching; vorinostat no
   longer tiny).
+- 2026-11-04: an alternative introduction appeared on Overleaf (`paper/sections/01_introduction_JW.tex`, commits
+  f39a704 / dca25e3; not input by main.tex). User decision: keep our current introduction (`01_introduction.tex`);
+  do not use the alternative, and do not delete it.
