@@ -1,20 +1,26 @@
-"""Fig. 2 of the UnDetect paper: what the drug-blind benchmark measures. Dossier: paper/figures/fig2_benchmark.md.
+"""Fig. 2 of the UnDetect paper: unseen-compound generalization. Dossier: paper/figures/fig2_benchmark.md.
 
-(a) PCC_DEG of each model with its drug input and with it zeroed: the seven published models (Bai et al. 2026, fold
-    means) and UnDetect (compound lane on / off; off = its drug-free backbone); line = the plate-response
-    baseline (drug-free MLP line removed 2026-11-02, user: UnDetect's drug-zeroed point marks the drug-free level);
-    small dots = folds (user 2026-11-03; published folds from primary_comparisons.csv fold_k_full / fold_k_comparator).
-    (b) Plate-response baseline on test samples with and without a training plate-mate, next to the cell-line mean;
-    small dots = folds. (c) Plate-centred score PCC_plate: baseline, drug-free MLP, plate co-membership
-    kernel, chemistry kernel, UnDetect, and XPert / TranSiGen with and without their drug input; dots = folds. (d) DeepCE's own benchmark (published split, per-signature Pearson):
-    values reported by Pham et al. 2021 (open dots) next to our runs (filled).
+2026-11-04 redesign (Jun Wen's review of the PDF): horizontal bars with error bars, one colour per tool across all
+panels; UnDetect light red, UnDetect + XPert purple, XPert light blue; the plate-response baseline keeps its orange,
+drug-free networks gray. (d) drops the ablation row (UnDetect, chem. + targets + MOA).
+
+(a) PCC_DEG of each model with its drug input (solid) and with it zeroed (hatched): the seven published models
+    (Bai et al. 2026) and UnDetect (zeroed = its drug-free backbone); line = the plate-response baseline.
+(b) PCC_plate of the compared methods; XPert and TranSiGen also with their drug input zeroed; line = the reference
+    (each test sample from the same compound's measured responses in other lines; uses test responses).
+(c) DeepCE's own benchmark (published split, per-signature Pearson): values reported by Pham et al. 2021 for the
+    models we did not run, our runs otherwise.
+2026-11-04 (user): old (b), the plate-response baseline with / without plate-mate, dropped (numbers in the text);
+legend shared by (a) and (b); reference line in (b); same-input MLP labelled "MLP".
+Error bars: s.d. over the five folds (a-b); s.d. over seeds where a model was trained with several (c: DeepCE
+reproduction, 3 seeds; the same-input MLP); none for single deterministic fits or reported values.
 Sources: repro/dpb/upstream/.../statistics/{primary_comparisons,full_vs_mlp}.csv (drug-perturbation-benchmark
 @ 55edbfe; report §5.6); results/sdst_hybrid/plate_baseline/summary.json (job 350554; §5.1);
-results/sdst_hybrid/final_cpu/scores.csv (final numbers, one backbone run; report/11_06_report.md §6.3);
-results/sdst_hybrid/published/centred.json (released XPert / TranSiGen Full and Zero; 11_06 §4.1);
-results/sdst_hybrid/v3/centred.json (plate-response baseline on PCC_plate only, backbone-free; 10_30 §5.4);
-(d) repro/deepce/results/{baselines,xline_kernel/deepce_split,mlp_multimodal}/summary.json, ppi_seed{0,1,2}
-(report §4.2, §4.6; reported values: Pham et al. 2021 Table 1 as transcribed in report/10_09_report.md §5.1).
+results/sdst_hybrid/final_cpu/scores.csv (final numbers, one backbone run, released published predictions scored on
+the same rows; report/11_06_report.md §4, §6.3); results/sdst_hybrid/published/centred.json (TranSiGen drug zeroed;
+11_06 §4.1); (d) repro/deepce/results/{baselines,xline_kernel/deepce_split,mlp_multimodal}/summary.json,
+ppi_seed{0,1,2} (report §4.2, §4.6; reported values: Pham et al. 2021 Table 1 as transcribed in
+report/10_09_report.md §5.1).
 Run: /nfs-stor/yuqi.lei/Therapeutic/envs/gnn-gpu/bin/python -I scripts/figures/fig2_benchmark.py [outdir]
 """
 import json
@@ -23,151 +29,163 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from matplotlib.patches import Patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from style import CTX, GRID, INK, INK2, MUTED, OURS, PLATE, ROOT, VIEW, panel, plt, save  # noqa: E402
+from style import GRID, INK, INK2, LINE, PLATE, ROOT, panel, plt, save  # noqa: E402
 
 STATS = ROOT / "repro/dpb/upstream/data/analysis/benchmark_metrics/statistics"
 RES = Path("/nfs-stor/yuqi.lei/Therapeutic/results/sdst_hybrid")
 DCE = Path("/nfs-stor/yuqi.lei/Therapeutic/repro/deepce/results")
-BASE = "Plate response baseline"
+
+# One colour per tool, shared by every panel (Jun Wen 2026-11-04: UnDetect light red, ensemble purple, XPert light
+# blue; the rest our choice, kept away from those three hues).
+TOOL = {"UnDetect": "#f0807a", "UnDetect + XPert": "#8e6bbf", "XPert": "#8ec5ea", "TranSiGen": "#499894",
+        "DeepCE": "#edc948", "PertDiT": "#b6992d", "PRnet": "#59a14f", "MultiDCP": "#9c755f", "CIGER": "#c9b18f",
+        "Drug-free MLP": "#8a8984", "Plate response baseline": PLATE, "Cell-line mean": LINE,
+        "Chemistry kernel": "#6b7f99", "Morgan $k$NN, tuned": "#a39e93", "$k$NN": "#d3d0c8",
+        "Neural network": "#bdb9ae", "DeepCE without attention": "#f5e3a3", "Mean per line and dose": LINE,
+        "MLP": "#5f5e59"}
+BAR = dict(height=0.38, zorder=2, linewidth=0.6)
+ERR = dict(ecolor=INK2, elinewidth=0.7, capsize=1.6, capthick=0.7)
+
+
+def tint(hex_colour, f=0.55):
+    """Blend a colour towards white (drug-zeroed bars)."""
+    rgb = np.array([int(hex_colour[i:i + 2], 16) for i in (1, 3, 5)]) / 255
+    return tuple(rgb + (1 - rgb) * f)
+
+
+def style_axis(ax, xlabel, xlim):
+    ax.set_xlim(*xlim)
+    ax.set_xlabel(xlabel, fontsize=8.5, labelpad=1)
+    ax.grid(axis="x", color=GRID, lw=0.6); ax.set_axisbelow(True)
+    ax.spines["left"].set_visible(False); ax.tick_params(axis="y", length=0)
+
+
+def colour_ours(ax, names):
+    for t, n in zip(ax.get_yticklabels(), names):
+        if n.startswith("UnDetect"):
+            t.set_color("#c2413b" if n == "UnDetect" else TOOL[n])
+
+
+def paired_bars(ax, items, label_fmt="{:.3f}", inside=None):
+    """items: (name, with-drug folds, drug-zeroed folds or None); highest mean on top. Returns the plotted rows.
+    inside: write the value inside bars longer than this (keeps labels clear of a reference line)."""
+    items = sorted(items, key=lambda t: np.nanmean(t[1]))
+    out = []
+    for k, (name, fw, fz) in enumerate(items):
+        col = TOOL[name]
+        has_z = fz is not None
+        yw = k + (0.2 if has_z else 0)
+        ax.barh(yw, fw.mean(), xerr=fw.std(ddof=1), color=col, edgecolor=col, error_kw=ERR, **BAR)
+        if inside is not None and fw.mean() > inside:
+            ax.text(fw.mean() - fw.std(ddof=1) - 0.003, yw, label_fmt.format(fw.mean()), ha="right", va="center",
+                    fontsize=6.5, color=INK)
+        else:
+            pad = 0.008 if inside is None else 0.003
+            ax.text(fw.mean() + fw.std(ddof=1) + pad, yw, label_fmt.format(fw.mean()), va="center", fontsize=6.5,
+                    color=INK)
+        out.append({"model": name, "input": "with drug", "mean": fw.mean(), "sd": fw.std(ddof=1)})
+        if has_z:
+            ax.barh(k - 0.2, fz.mean(), xerr=fz.std(ddof=1), color=tint(col), edgecolor=col, hatch="//////",
+                    error_kw=ERR, **BAR)
+            out.append({"model": name, "input": "drug zeroed", "mean": fz.mean(), "sd": fz.std(ddof=1)})
+    names = [n for n, *_ in items]
+    ax.set_yticks(np.arange(len(items)), names, fontsize=8)
+    ax.set_ylim(-0.6, len(items) - 0.4)
+    colour_ours(ax, names)
+    return out
+
 
 pc = pd.read_csv(STATS / "primary_comparisons.csv")
 z = pc[(pc.metric_key == "pcc_deg_mean") & (pc.contrast == "Full - Zero")].set_index("model")
-fm = pd.read_csv(STATS / "full_vs_mlp.csv")
-mlp = float(fm[fm.metric_key == "pcc_deg_mean"].comparator_mean.iloc[0])
-lk = pd.DataFrame(json.loads((RES / "plate_baseline/summary.json").read_text())).mean()
 fin = pd.read_csv(RES / "final_cpu/scores.csv")
-fin_deg = fin.groupby("arm").deg.mean()
-cen = pd.concat([pd.DataFrame(json.loads((RES / "v3/centred.json").read_text())["rows"]).query("arm == 'plate_lookup'"),
-                 fin.rename(columns={"plate": "centred_shared"})[["fold", "arm", "centred_shared"]],
-                 pd.DataFrame(json.loads((RES / "published/centred.json").read_text())["rows"])
-                 .query("arm in ['transigen_zero']")])
+deg = fin.pivot(index="fold", columns="arm", values="deg").sort_index()
+plate = fin.pivot(index="fold", columns="arm", values="plate").sort_index()
+pub = pd.DataFrame(json.loads((RES / "published/centred.json").read_text())["rows"])
+LKF = pd.DataFrame(json.loads((RES / "plate_baseline/summary.json").read_text()))
+rows = []
 
-rows = [{"panel": "a", "model": m, "with_drug": z.loc[m, "full_mean"], "drug_zeroed": z.loc[m, "comparator_mean"]}
-        for m in z.full_mean.sort_values().index]
-rows.append({"panel": "a", "model": "UnDetect", "with_drug": fin_deg["ctx_pc"], "drug_zeroed": fin_deg["mlp"]})
-rows.append({"panel": "a", "model": "UnDetect\n+ XPert", "with_drug": fin_deg["ctx_pc+xpert"], "drug_zeroed": np.nan})
-A = pd.DataFrame(rows)
-FOLDS = {}  # model -> (with-drug folds, drug-zeroed folds)
-for m in z.index:
-    FOLDS[m] = tuple(np.array([z.loc[m, f"fold_{i}_{c}"] for i in range(5)], float) for c in ("full", "comparator"))
-fin_f = fin.pivot(index="fold", columns="arm", values="deg").sort_index()
-FOLDS["UnDetect"] = (fin_f["ctx_pc"].to_numpy(), fin_f["mlp"].to_numpy())
-FOLDS["UnDetect\n+ XPert"] = (fin_f["ctx_pc+xpert"].to_numpy(), np.full(5, np.nan))
-for m, (fw, fz) in FOLDS.items():
-    rows += [{"panel": "a", "model": m, "fold": i, "with_drug": float(fw[i]), "drug_zeroed": float(fz[i])} for i in range(5)]
-
-fig = plt.figure(figsize=(6.5, 4.8))
-TOP = 3.0 / 4.8  # panels a-c keep their 6.5 x 3.0 layout in the upper part; d below
+fig = plt.figure(figsize=(6.5, 4.9))
+TOP = 3.1 / 4.9  # panels a-b in the upper part; c below
 def box(x, y, w, h):
     return [x, 1 - TOP + y * TOP, w, h * TOP]
-a = fig.add_axes(box(0.125, 0.15, 0.33, 0.73))
-b = fig.add_axes(box(0.715, 0.62, 0.27, 0.32))
-c = fig.add_axes(box(0.715, 0.13, 0.27, 0.36))
-d = fig.add_axes([0.335, 0.085, 0.60, 0.25])
+a = fig.add_axes(box(0.125, 0.14, 0.33, 0.76))
+c = fig.add_axes(box(0.66, 0.14, 0.29, 0.76))      # PCC_plate, panel "b" in the paper
+d = fig.add_axes([0.335, 0.075, 0.60, 0.235])      # DeepCE, panel "c"
 
 # (a) with vs without the drug input
-y = np.arange(len(A))
-for k, r in A.iterrows():
-    col = OURS if r.model.startswith("UnDetect") else INK2
-    fw, fz = FOLDS[r.model]  # folds in a strip just below the row: the fold spread is smaller than the markers
-    a.scatter(fw, np.full(5, k - 0.3), s=6, color=col, zorder=5, lw=0)
-    if np.isfinite(fz).all():
-        a.scatter(fz, np.full(5, k - 0.3), s=6, facecolor="white", edgecolor=col, zorder=5, lw=0.6)
-    if np.isfinite(r.drug_zeroed):
-        a.plot([r.drug_zeroed, r.with_drug], [k, k], color=GRID, lw=2, zorder=1, solid_capstyle="round")
-        a.scatter(r.drug_zeroed, k, s=32, facecolor="white", edgecolor=col, lw=1.1, zorder=4)
-    a.scatter(r.with_drug, k, s=32, color=col, zorder=3)
-a.axvline(lk.plate_mean, color=PLATE, lw=1.1, zorder=2)
-a.set_yticks(y, A.model); a.get_yticklabels()[-1].set_fontsize(8); a.get_yticklabels()[-1].set_linespacing(0.9)
-for t in a.get_yticklabels()[-2:]:
-    t.set_color(OURS)
-a.set_xlim(0.2, 0.7); a.set_ylim(-0.6, len(A) - 0.4)
-a.set_xlabel(r"PCC$_\mathrm{DEG}$")
-a.grid(axis="x", color=GRID, lw=0.6); a.set_axisbelow(True)
-a.spines["left"].set_visible(False); a.tick_params(axis="y", length=0)
-a.scatter([], [], s=32, color=INK2, label="with drug")
-a.scatter([], [], s=32, facecolor="white", edgecolor=INK2, lw=1.1, label="drug zeroed")
-a.legend(loc="lower left", bbox_to_anchor=(-0.02, 1.0), ncol=2, frameon=False, fontsize=7.5, handletextpad=0.2,
-         columnspacing=0.9, borderaxespad=0.1)
-a.text(lk.plate_mean - 0.006, -0.45, BASE, rotation=90, ha="right", va="bottom", fontsize=7.5, color=PLATE)
+NAME = {"CIGER": "CIGER", "MultiDCP": "MultiDCP", "PRnet": "PRnet", "PertDiT": "PertDiT", "DeepCE": "DeepCE",
+        "TranSiGen": "TranSiGen", "XPert": "XPert"}
+items = []
+for m in z.index:
+    fw, fz = (np.array([z.loc[m, f"fold_{i}_{c_}"] for i in range(5)], float) for c_ in ("full", "comparator"))
+    items.append((NAME.get(m, m), fw, fz))
+items.append(("UnDetect", deg["ctx_pc"].to_numpy(), deg["mlp"].to_numpy()))
+items.append(("UnDetect + XPert", deg["ctx_pc+xpert"].to_numpy(), None))
+rows += [dict(r, panel="a", metric="PCC_DEG") for r in paired_bars(a, items)]
+names_a = [t.get_text() for t in a.get_yticklabels()]
+a.set_yticks(a.get_yticks(), [n.replace(" + ", "\n+ ") for n in names_a], fontsize=8, linespacing=0.9)
+colour_ours(a, names_a)
+a.axvline(LKF.plate_mean.mean(), color=PLATE, lw=1.1, zorder=3)
+a.text(LKF.plate_mean.mean() - 0.008, -0.5, "Plate response\nbaseline", rotation=90, ha="right", va="bottom",
+       fontsize=6.5, color=PLATE, linespacing=0.9)
+style_axis(a, r"PCC$_\mathrm{DEG}$", (0, 0.76))
+fig.legend(handles=[Patch(facecolor="#8a8984", edgecolor="#8a8984", label="with drug"),
+                    Patch(facecolor=tint("#8a8984"), edgecolor="#8a8984", hatch="//////",
+                          label="drug input zeroed")],
+           loc="upper left", bbox_to_anchor=(0.11, 1.0), ncol=2, frameon=False, fontsize=7.5, handlelength=1.4,
+           handletextpad=0.4, columnspacing=1.2, borderaxespad=0.2)
 panel(a, "a", -0.33)
 
-# (b) the baseline works only through plate-mates
-share = lk.share_test_with_train_control
-names = [f"plate-mate ({share:.0%})", f"no plate-mate ({1 - share:.0%})", "cell-line mean"]
-vals = [lk.plate_mean_shared, lk.plate_mean_unshared, lk.cell_mean]
-yb = np.arange(3)[::-1]
-b.barh(yb, vals, height=0.62, color=[PLATE, PLATE, MUTED], zorder=2)
-LKF = pd.DataFrame(json.loads((RES / "plate_baseline/summary.json").read_text()))
-fb = [LKF.plate_mean_shared.to_numpy(), LKF.plate_mean_unshared.to_numpy(), LKF.cell_mean.to_numpy()]
-for k, fv in zip(yb, fb):
-    b.scatter(fv, np.full(len(fv), k), s=5, color=INK, zorder=3, lw=0)
-for k, v, fv in zip(yb, vals, fb):
-    b.text(fv.max() + 0.012, k, f"{v:.2f}", ha="left", va="center", fontsize=8, color=INK)
-b.set_yticks(yb, names, fontsize=8)
-b.set_xlim(0, 0.75); b.set_xlabel(r"PCC$_\mathrm{DEG}$", fontsize=8.5, labelpad=1)
-b.grid(axis="x", color=GRID, lw=0.6); b.set_axisbelow(True)
-b.spines["left"].set_visible(False); b.tick_params(axis="y", length=0)
-fig.text(0.475, 1 - TOP + 0.94 * TOP, "b", fontsize=11, fontweight="bold", ha="left", va="center")
-rows += [{"panel": "b", "group": g, "pcc_deg": v} for g, v in zip(names, vals)]
-rows += [{"panel": "b", "group": g, "fold": i, "pcc_deg": float(fv[i])} for g, fv in zip(names, fb) for i in range(len(fv))]
-
-# (c) plate-centred score: what distinguishes a compound from its plate-mates
-# 2026-11-02 user: plate-response baseline (0 by construction) dropped, rows sorted, highest on top,
-# axis from 0.05; dots instead of bars because the axis no longer starts at zero; ensemble added.
-arms = [("mlp", "Drug-free MLP", CTX), ("pool_plate", "Plate kernel", MUTED),
-        ("transigen_zero", "TranSiGen, drug zeroed", "white"), ("transigen", "TranSiGen", INK2),
-        ("xpert_zero", "XPert, drug zeroed", "white"), ("xpert", "XPert", INK2),
-        ("pool_chem", "Chemistry kernel", VIEW["chem"]), ("ctx_pc", "UnDetect", OURS),
-        ("ctx_pc+xpert", "UnDetect + XPert", OURS)]
-arms.sort(key=lambda t: cen[cen.arm == t[0]].centred_shared.mean())
-yc = np.arange(len(arms))                # highest on top (user, 2026-11-02 correction)
-for k, (arm, name, col) in zip(yc, arms):
-    f = cen[cen.arm == arm].centred_shared.to_numpy()
-    c.scatter(f, np.full(len(f), k), s=5, color=MUTED, zorder=2, lw=0)
-    c.scatter(f.mean(), k, s=30, zorder=3, color=col, edgecolor=INK2 if col == "white" else col, lw=1.1)
-    rows += [{"panel": "c", "arm": arm, "fold": i, "pcc_plate": float(v)} for i, v in enumerate(f)]
-c.set_yticks(yc, [n for _, n, _ in arms], fontsize=8)
-for t, (arm, _, _) in zip(c.get_yticklabels(), arms):
-    if arm.startswith("ctx_pc"):
-        t.set_color(OURS)
-c.set_xlabel(r"PCC$_\mathrm{plate}$", fontsize=8.5, labelpad=1)
-c.set_xlim(0.05, 0.20); c.set_ylim(-0.6, len(arms) - 0.4); c.set_xticks([0.05, 0.10, 0.15])
-c.grid(axis="x", color=GRID, lw=0.6); c.set_axisbelow(True)
-c.spines["left"].set_visible(False); c.tick_params(axis="y", length=0)
-fig.text(0.475, 1 - TOP + 0.51 * TOP, "c", fontsize=11, fontweight="bold", ha="left", va="center")
+# (c) plate-centred score of the compared methods
+tz = pub[pub.arm == "transigen_zero"].sort_values("fold").centred_shared.to_numpy()
+items = [("CIGER", plate["ciger"].to_numpy(), None), ("MultiDCP", plate["multidcp"].to_numpy(), None),
+         ("DeepCE", plate["deepce"].to_numpy(), None), ("Drug-free MLP", plate["mlp_bai"].to_numpy(), None),
+         ("TranSiGen", plate["transigen"].to_numpy(), tz), ("XPert", plate["xpert"].to_numpy(),
+                                                            plate["xpert_zero"].to_numpy()),
+         ("UnDetect", plate["ctx_pc"].to_numpy(), None), ("UnDetect + XPert", plate["ctx_pc+xpert"].to_numpy(), None)]
+rows += [dict(r, panel="b", metric="PCC_plate") for r in paired_bars(c, items, inside=0.09)]
+# reference: the compound's own measurements in other lines (report/11_06_report.md §11 v2, job 364547)
+ref = json.loads((RES / "oracle_final/summary.json").read_text())["means"]["all_shared"]["oracle_uniform"]
+c.axvline(ref, color=INK2, lw=1.0, ls="--", zorder=3)
+c.text(ref - 0.004, -0.5, f"reference ({ref:.3f}),\nuses test responses", rotation=90, ha="right", va="bottom",
+       fontsize=6.5, color=INK2, linespacing=0.9)
+rows.append({"panel": "b", "metric": "PCC_plate", "model": "reference", "mean": ref})
+style_axis(c, r"PCC$_\mathrm{plate}$", (0, 0.235))
+c.set_xticks([0, 0.05, 0.1, 0.15, 0.2])
+fig.text(0.47, 1 - TOP + 0.95 * TOP, "b", fontsize=11, fontweight="bold", ha="left", va="center")
 
 # (d) DeepCE's own benchmark
 bl = json.loads((DCE / "baselines/summary.json").read_text())
 xk = json.loads((DCE / "xline_kernel/deepce_split/summary.json").read_text())["arms"]
 mm = json.loads((DCE / "mlp_multimodal/summary.json").read_text())
-rep = np.mean([np.load(DCE / f"ppi_seed{s}/test_pred_bestdev.npz")["per_sig_pearson"] for s in range(3)], 0).mean()
-# 2026-11-02 user: no reported / reproduced labels; models we ran show our value (DeepCE = our reproduction), the
-# others the value of Pham et al. (flag kept in the source table only); highest on top.
-D = [("Mean per line and dose", bl["mean_cell_dose"]["pearson"], MUTED, False),
-     ("$k$NN", 0.3903, INK2, True), ("Neural network", 0.3929, INK2, True),
-     ("DeepCE without attention", 0.4418, INK2, True),
-     ("Morgan $k$NN, tuned", bl["knn_morgan"]["pearson"], MUTED, False), ("DeepCE", rep, INK2, False),
-     ("Chemistry kernel", xk["krr_chem_perline"]["test"], VIEW["chem"], False),
-     ("MLP, same compound views", mm["mlp_multi"]["test_seedavg_per_sig"], CTX, False),
-     ("UnDetect, chem. + targets + MOA", xk["krr_chem_kn_norm_xline"]["test"], OURS, False),
-     ("UnDetect, all views", xk["krr_multi_norm_xline"]["test"], OURS, False)]
+rep = np.array([np.load(DCE / f"ppi_seed{s}/test_pred_bestdev.npz")["per_sig_pearson"].mean() for s in range(3)])
+mlp_seeds = np.atleast_1d(np.array(mm["mlp_multi"]["test"], float))
+NO = np.nan
+D = [("Mean per line and dose", bl["mean_cell_dose"]["pearson"], NO, False),
+     ("$k$NN", 0.3903, NO, True), ("Neural network", 0.3929, NO, True),
+     ("DeepCE without attention", 0.4418, NO, True),
+     ("Morgan $k$NN, tuned", bl["knn_morgan"]["pearson"], NO, False),
+     ("DeepCE", rep.mean(), rep.std(ddof=1), False),
+     ("Chemistry kernel", xk["krr_chem_perline"]["test"], NO, False),
+     ("MLP", mm["mlp_multi"]["test_seedavg_per_sig"],
+      mlp_seeds.std(ddof=1) if mlp_seeds.size > 1 else NO, False),
+     ("UnDetect", xk["krr_multi_norm_xline"]["test"], NO, False)]
 D.sort(key=lambda t: t[1])
 yd = np.arange(len(D))                   # highest on top
-for k, (name, v, col, reported) in zip(yd, D):
-    d.scatter(v, k, s=32, zorder=3, color=col, edgecolor=col, lw=1.1)
-    d.text(v + 0.006, k, f"{v:.3f}", ha="left", va="center", fontsize=7.5, color=INK)
-    rows.append({"panel": "d", "model": name, "pearson": float(v), "reported": reported})
+for k, (name, v, sd, reported) in zip(yd, D):
+    col = TOOL.get(name, TOOL["Drug-free MLP"])
+    d.barh(k, v, xerr=None if np.isnan(sd) else sd, color=col, edgecolor=col, error_kw=ERR,
+           **dict(BAR, height=0.62))
+    d.text(v + (0 if np.isnan(sd) else sd) + 0.006, k, f"{v:.3f}", ha="left", va="center", fontsize=7, color=INK)
+    rows.append({"panel": "c", "metric": "Pearson", "model": name, "mean": float(v),
+                 "sd": None if np.isnan(sd) else float(sd), "reported": reported})
 d.set_yticks(yd, [n for n, *_ in D], fontsize=7.5)
-for t, (name, *_) in zip(d.get_yticklabels(), D):
-    if name.startswith("UnDetect"):
-        t.set_color(OURS)
-d.set_xlim(0.3, 0.64); d.set_ylim(-0.6, len(D) - 0.4)
-d.set_xlabel("Pearson, DeepCE test split", fontsize=8.5, labelpad=1)
-d.grid(axis="x", color=GRID, lw=0.6); d.set_axisbelow(True)
-d.spines["left"].set_visible(False); d.tick_params(axis="y", length=0)
-fig.text(0.02, 0.345, "d", fontsize=11, fontweight="bold", ha="left", va="center")
+colour_ours(d, [n for n, *_ in D])
+d.set_ylim(-0.6, len(D) - 0.4)
+style_axis(d, "Pearson, DeepCE test split", (0, 0.68))
+fig.text(0.02, 0.32, "c", fontsize=11, fontweight="bold", ha="left", va="center")
 
 save(fig, "fig2_benchmark", sys.argv[1] if len(sys.argv) > 1 else None, table=pd.DataFrame(rows))

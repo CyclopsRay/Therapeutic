@@ -862,3 +862,21 @@ scores −0.0000), all compound-aware arms 0.7–18.8.
 - Interpretation left open: XPert's relative standing drops from PCC_plate to PCC_within. One candidate is that
   XPert's PCC_plate gains more from the shared m_i error on plates with few plate-mates (XPert led in the ≤ 20
   plate-mate bins, §10.6). This is not tested here.
+
+## 13. Compute: UnDetect vs XPert wall time on A100-SXM4-40GB (jobs 364344, 357100; 2026-11-04 analysis)
+
+| | UnDetect (job 364344, gpu-06, 5 folds) | XPert (job 357100, gpu-52, fold 0) |
+|---|---|---|
+| GPU | A100-SXM4-40GB | A100-SXM4-40GB |
+| network training | backbone 141–166 s per fold (early stop at epoch 345–408) | 268.2 min (early stop at epoch 145) |
+| stage 1 (backbone + kernel cache), wall | 951.2 s for 5 folds = 190 s per fold; peak GPU 5.0 GB, host RSS 7.5 GB | |
+| stage 2 (interaction), wall | 597.4 s for 5 folds = 119 s per fold (upper bound: fits every interaction arm, on CPU); RSS 24.8 GB | |
+| total per fold | ≈ 310 s ≈ 5.2 min | 268.2 min training; 276.7 min with evaluation (16,604.7 s) |
+| parameters | backbone 14.40M (978→2048×3→978) + closed-form terms | 5.60M |
+
+- Ratio: about 52× less wall time per fold (268.2 / 5.2), on the same GPU type, different nodes.
+- Only XPert fold 0 was timed; the other folds are assumed similar (the released per-fold timings are not available).
+- Sources: `/nfs-stor/yuqi.lei/Therapeutic/logs/undetect-time-364344.out` (stage markers, `wall_s`, `peak_gpu_alloc_MB`,
+  `peak_rss_MB`); `/nfs-stor/yuqi.lei/Therapeutic/logs/dpb-train-357100.out` line 696 ("Training_time:268.17min") and
+  last line ("OK 16604.7s xpert fold_0"). Parameter counts: `11_06_record.md` 2026-11-03 (wall-time entry).
+- Stage labels checked against the log: stage 1 = backbone training + kernel/KRR cache per fold; stage 2 = interaction.

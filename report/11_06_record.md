@@ -1402,3 +1402,78 @@ per fold, as for PCC_plate. Coverage reported: plates and units kept, and the sh
   "five-way" in Method). Final: Tables 2 + 3 on p. 9, Fig. 3 on p. 10, references start at line 42/50 of p. 11
   (about 7 lines of slack), no overfull boxes, no undefined references.
 - The Overleaf merge e64f13c (before these edits) only added an empty `sections/01_introduction_JW.tex`.
+
+### 2026-11-04 05:30 — Jun Wen's comments on the PDF (`paper/editions/MKL_Therapeutic_JW.pdf`): restructure plan
+
+14 annotations, all by Jun Wen, mostly structural. Extracted with pypdf (scratchpad script). Decisions with the user:
+
+- **Intro, four paragraphs (we write it; `01_introduction_JW.tex` stays unused):** (1) background and significance
+  (his note: "No background introduction and strong motivation"); (2) challenges and approaches; challenges are the
+  dominance of plate/line context, structure predicting response poorly, and *partial compound information*, which
+  now also covers incomplete atlases: L1000 profiles each compound in few cell lines and plates (drug-blind
+  benchmark: 78,453 pairs over 8,276 compounds × 164 lines, about 6% of the grid); (3) limitations of existing
+  methods: the highlighted "barely use the compound" sentences are **the motivation**; (4) our method and results.
+  Contributions: method first (also the RECOMB scope rule in `paper/README.md`).
+- **§2 Benchmark is dissolved:** Task definition → Method "Problem formulation" ("Put in method"); datasets, plate
+  structure and metrics → Experiments "Datasets and setup" ("put at experiments").
+- **Experiments:** 1 Datasets and setup, 2 Compared methods, 3 Results: (i) unseen-compound generalization,
+  (ii) ablation study, (iii) compound case study (old "Compound views").
+- **Wording:** Jun Wen asked to avoid "transfer" and use "generalization". Our test holds out compounds, all lines
+  seen, so the results heading is "Unseen-compound generalization", not "cross-cell-line generalization". The frozen
+  title keeps "Multi-View Transfer"; "transfer" goes from headings and results framing.
+- **XPert row (0.632, Δ −0.006) highlighted without comment:** a result to highlight: the best published model is
+  below the drug-free baseline on the standard score.
+- **Table 2:** only the compared methods; ablation rows go to a new ablation table, in the main text if the page
+  budget allows (user prefers main text, since ablation is now its own section).
+- **Fig. 2 (Jun Wen):** horizontal bar charts with error bars; one colour per tool, consistent across panels;
+  UnDetect light red, UnDetect + XPert purple, XPert light blue; other colours at our choice. (d): drop the
+  ablation row (UnDetect, chem. + targets + MOA).
+- Page budget: about 7 lines of slack before this change (record 2026-11-03 14:20), so the new text must be paid for
+  by cuts (candidates: Fig. 1 caption, the intro's method paragraph, which repeats Method §3.1).
+
+### 2026-11-04 07:00 — Restructure applied (local, not committed or pushed)
+
+- Paper (`paper/`, on top of 5e3a223): `02_data.tex` dissolved (git rm). Method gains §2.1 "Problem formulation"
+  (task + context/compound split); §2.5 renamed "Generalization across and within cell lines"; the stage label in the
+  overview equation is "compound effect" instead of "transfer". New §3 Experiments: 3.1 Datasets and setup (Table 1,
+  plate structure, PCC_plate / PCC_within), 3.2 Compared methods (new), 3.3 Unseen-compound generalization,
+  3.4 Ablation study, 3.5 Compound case study. Flat subsections instead of 3.3.1-3.3.3 to save heading lines.
+- Intro rewritten in the four-paragraph scheme; contributions now start with UnDetect. New coverage sentence:
+  9 of 164 lines per compound, almost always one plate per line, < 6% of the grid (report/10_30 §6 "Structural fact":
+  77,966 pairs, 458 with a second sample); targets 36%, Cell Painting 23% (11_06 §10.3). Fig. 1 caption shortened.
+- Table 2 = compared methods only: plate-response baseline, CIGER, MultiDCP, PRnet, PertDiT, DeepCE, TranSiGen, XPert
+  ("best published", Δ −0.006), published drug-free MLP, our backbone, UnDetect, ensemble, reference. Columns:
+  PCC_DEG, Δ, no-mate PCC_DEG, PCC_plate, Δ, PCC_within. All values from final_cpu/scores.csv (published models =
+  released predictions, report §4), PRnet/PertDiT PCC_DEG only (released on another scale), PCC_within from §12
+  (CIGER/MultiDCP not scored there: "--"). Recomputed at full precision; MultiDCP PCC_DEG 0.25445 → 0.254.
+- New Table 4 (ablation, main text): backbone → + plate kernel → + chemistry kernel → + multi-view kernel →
+  + interaction (UnDetect); same features end to end / residual head. Rows unchanged from the old Table 2.
+- "transfer" removed from headings and prose (Method, Results, Discussion, appendix captions/headings). Kept: the frozen
+  title and abstract, the `fig:app-transfer` label and file name, and the "kernel transfer" text inside the Fig. 1
+  artwork (needs a redraw to change).
+- Fig. 2 redrawn (`scripts/figures/fig2_benchmark.py`): horizontal bars, s.d. error bars (folds; seeds in d), one
+  colour per tool, UnDetect light red / ensemble purple / XPert light blue. (c) now shows compared methods only (plate
+  and chemistry kernels moved to Table 4); (d) lost the "chem. + targets + MOA" row. Rendered with numpy/pandas/
+  matplotlib from a scratchpad pip install because the /nfs-stor gnn-gpu env hung in NFS I/O (D state) for > 9 min.
+- Build (tectonic): main text pp. 2-11, references start at line 46/50 of p. 11 (about 4 lines of slack), no overfull
+  boxes, no undefined references.
+
+### 2026-11-04 08:00 — Second round on the user's comments (local, not committed)
+
+- **Fig. 2:** old (b) (plate-response baseline with / without plate-mate) dropped; the numbers stay in the text
+  (0.643 / 0.239, cell-line mean 0.243). New (b) = PCC_plate, wider, with a dashed reference line at 0.201
+  (`oracle_final/summary.json` all_shared oracle_uniform 0.2007) labelled "uses test responses". One legend shared by (a)
+  and (b) ("with drug" / "drug input zeroed"). "Drug-free MLP" in (b) is now the published MLP (0.102) to match
+  Table 2. (c) (DeepCE) label "MLP, same compound views" → "MLP" (caption explains). Values in (b) drawn inside the
+  longer bars so they do not cross the reference line.
+- **Table 2:** our backbone row removed; the published row is "drug-free MLP"; Δ recomputed against it (mlp_bai
+  0.63720 / 0.10183): UnDetect +0.013 / +0.058, ensemble +0.023 / +0.084, XPert −0.006 / +0.055, reference +0.099.
+  Caption notes that our backbone reproduces it (0.637, 0.100). Marking: **bold = best (the UnDetect + XPert
+  ensemble)**, underlined = best single model (UnDetect). Before, UnDetect was bold although the ensemble is higher.
+- **Method headings:** 2.1 Task definition; 2.2 UnDetect pipeline; the Context backbone subsection removed (Jun Wen:
+  not our novelty). 2.2 now says in three sentences where it comes from (Bai et al.'s drug-free network, an MLP on the
+  control, 3 × 2,048) and that it is the line mean where the control is removed; the Level-5 detail moved to App. A.1.
+- **Computational cost** filled from report §13: about 5 min per fold for UnDetect (3.2 min backbone + kernel terms,
+  2 min interaction, 5 GB GPU memory) against 268 min for XPert fold 0, same GPU type (A100-SXM4-40GB). Same sentence
+  in the Discussion. Only XPert fold 0 was timed.
+- Build: main text pp. 2–11, References at line 46/50 of p. 11, no overfull boxes, no undefined references.
