@@ -1635,7 +1635,7 @@ per fold, as for PCC_plate. Coverage reported: plates and units kept, and the sh
   plate-centred metrics; headline results). The network-null contribution is no longer listed (still in §3.4 and the
   Discussion).
 - **Fig. 3 caption:** rewritten around one idea per panel, parentheses removed; error bars defined in one sentence.
-  Dropped detail: Tanimoto thresholds in (b), pair counts, the "37 genes" style specifics of (d).
+  Dropped detail: Tanimoto thresholds in (b), pair counts in (b), the 30-gene selection in (d).
 - **Reference check** (scratchpad `refcheck.py` → Crossref; chemCPA against the NeurIPS bibtex): all 35 cited keys
   exist; 11 bib entries uncited (bibtex drops them). Title, first author, volume and pages match for all 35. Year
   differences are online-first vs volume year (GEARS 2023/2024, STRING 2022/2023, Systema 2025/2026, PertDiT 2025/2026,
