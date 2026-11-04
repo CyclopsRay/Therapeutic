@@ -1561,3 +1561,7 @@ per fold, as for PCC_plate. Coverage reported: plates and units kept, and the sh
   neighbour) removed.
 - Paper pushed 3d7e806: final Arial figures, `_preview` files and the stale v6 `fig1_parts/` removed.
   Build: main text pp. 2–11, References at line 46/50 of p. 11.
+- Fig. 1 (user: top right too empty): Fusion module now shows the KTA view weights on its left (icon, bar in the view
+  colour, value; no title) and an arrow into the normalised kernel on its right; the similarity column of Kernel
+  regression moved with the kernel (XF = XL + 0.12 + 0.86 + 0.20 + KS/2); regression output strips shortened so its +
+  node clears the module edge.

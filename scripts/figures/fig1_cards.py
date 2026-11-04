@@ -411,14 +411,25 @@ def matrix_mix(ax, x, y, s, S, z=4):
     ax.add_patch(Rectangle((x, y), s, s, fc="none", ec=INK2, lw=0.5, zorder=z + 1))
 
 
+WCOL = 0.86                                  # width of the view-weight column in the fusion module
+
+
 def part_fusion(ax, xl, top, bot, my, S):
-    """Fusion + normalization from xl to the right edge: the normalised multi-view kernel (unit diagonal), centred.
-    Returns its bottom-centre (the query row) and the module's left edge at its mid-height."""
+    """Fusion + normalization from xl to the right edge. Left: the view weights w_v (real values, mean of five folds),
+    one bar per view with its icon and value, no title; an arrow; right: the normalised multi-view kernel (unit
+    diagonal). Returns the kernel's bottom-centre (the query row) and the module's left edge at its mid-height."""
     module(ax, xl, bot, W - 0.03 - xl, top - bot, "Fusion + normalization", "eff")
-    nx = (xl + W - 0.03) / 2 - FS / 2
+    ym = my + FS / 2; wx = xl + 0.12
+    for r, (key, _) in enumerate(VIEWS):
+        yy = ym + (1.5 - r) * 0.17; w_ = S["weights"][key]; bl = w_ / 0.30 * 0.42
+        ICON[key](ax, wx + 0.04, yy, 0.085)
+        ax.add_patch(Rectangle((wx + 0.13, yy - 0.035), bl, 0.07, fc=VIEW[key], ec="none", zorder=4))
+        label(ax, wx + 0.16 + bl, yy, f"{w_:.2f}", size=5.2, color=INK2, ha="left")
+    nx = xl + 0.12 + WCOL + 0.20
+    arrow(ax, xl + 0.12 + WCOL - 0.04, ym, nx - 0.10, ym, color=OURS)    # stops before the row labels
     matrix(ax, nx, my, FS, S["kernels"]["norm"], OURS, hl_last=True)
     axis_labels(ax, nx, my, FS, size=6.0, cols="bottom")
-    return (nx + FS / 2, my), (xl, my + FS / 2)
+    return (nx + FS / 2, my), (xl, ym)
 
 
 TH = 1.17
@@ -431,8 +442,8 @@ def part_transfer(ax, x, top, xc, vals, S):
     k = np.array(S["kernels"]["norm"])[QUERY]
     A, c = {}, 0.10
     sx = x + 0.17; sw = xc - c / 2 - 0.05 - sx
-    SWo = 0.22                               # output strips (Σ over profiled compounds)
-    ox = xc + c / 2 + 0.13
+    SWo = 0.18                               # output strips (Σ over profiled compounds)
+    ox = xc + c / 2 + 0.11
     for r, (name, key, qual) in enumerate((("Shared", "g", "all lines"), ("Per line", "h", "line ℓ"))):
         y0 = top - 0.25 - r * 0.47
         t = label(ax, x + 0.07, y0, name, size=5.8, ha="left")
@@ -453,7 +464,7 @@ def part_transfer(ax, x, top, xc, vals, S):
         label(ax, (xc + c / 2 + ox) / 2 + 0.015, yb + 0.06, "Σ", size=6, color=OURS)
         strip(ax, ox, yb - SH / 2, SWo, SH, vals[key], OURS)
         A[key] = (ox + SWo, yb); A[f"in{r}"] = (x, yb); A[f"w{r}"] = (ys[0] + c / 2, ys[1] - c / 2)
-    xp = ox + SWo + 0.12; yp = A["h"][1]      # shared + per line at the per-line row; the sum leaves downwards
+    xp = ox + SWo + 0.10; yp = A["h"][1]      # shared + per line at the per-line row; the sum leaves downwards
     path(ax, [A["g"], (xp, A["g"][1]), (xp, yp + 0.065)], color=OURS)
     path(ax, [A["h"], (xp - 0.065, yp)], color=OURS)
     node(ax, xp, yp, "+", color=OURS)
@@ -581,7 +592,7 @@ W, H = 6.5, 4.60
 GUT = 0.08                                   # gutter between modules
 KMX, KMW = 0.03 + CW + 0.12 + GUT, 1.66      # similarity-kernels module
 XL = KMX + KMW + GUT                         # left edge of the fusion module
-XF = (XL + W - 0.03) / 2                     # normalised kernel's centre = similarity column of the regression
+XF = XL + 0.12 + WCOL + 0.20 + FS / 2        # normalised kernel's centre = similarity column of the regression
 
 
 def assemble(S, vals):
