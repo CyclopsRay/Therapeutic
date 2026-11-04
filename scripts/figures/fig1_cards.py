@@ -213,12 +213,27 @@ ICON = {"chem": icon_fp, "tgt": icon_protein, "moa": icon_moa, "morph": icon_cp}
 
 
 # ---------------------------------------------------------------- context icons
-def well(ax, x, y, r):
-    ax.add_patch(Circle((x, y), r, fc=PANEL, ec=INK2, lw=0.7, zorder=3))
-    for dx, dy, a in ((-0.35, 0.3, 20), (0.3, 0.32, -30), (-0.3, -0.3, 60), (0.32, -0.25, 10), (0.0, 0.02, -60)):
-        ax.add_patch(Ellipse((x + dx * r, y + dy * r), 0.42 * r, 0.30 * r, angle=a, fc=CTX_LIGHT, ec=CTX, lw=0.4,
-                             zorder=4))
-        ax.add_patch(Circle((x + dx * r, y + dy * r), 0.06 * r, fc=CTX, ec="none", zorder=5))
+LINE_C = ["#7d8fa3", "#a6879a", "#8ea486"]    # cell lines (muted, apart from the module and view hues)
+
+
+def dish(ax, x, y, w, color, z):
+    """A petri dish seen from slightly above (cylinder), (x, y) = centre of its rim; cells in the cell line's colour."""
+    hgt, wall = 0.32 * w, 0.20 * w
+    ax.add_patch(Ellipse((x, y - wall), w, hgt, fc="white", ec=INK2, lw=0.5, zorder=z))
+    ax.add_patch(Rectangle((x - w / 2, y - wall), w, wall, fc="white", ec="none", zorder=z + 0.01))
+    ax.plot([x - w / 2] * 2, [y - wall, y], color=INK2, lw=0.5, zorder=z + 0.02)
+    ax.plot([x + w / 2] * 2, [y - wall, y], color=INK2, lw=0.5, zorder=z + 0.02)
+    ax.add_patch(Ellipse((x, y), w, hgt, fc=tint(color, 0.18), ec=INK2, lw=0.5, zorder=z + 0.03))
+    for dx, dy, a in ((-0.24, 0.05, 20), (0.20, 0.08, -30), (-0.05, -0.07, 60), (0.30, -0.06, 10), (0.02, 0.10, -50),
+                      (-0.33, -0.04, 35)):
+        ax.add_patch(Ellipse((x + dx * w, y + dy * w), 0.15 * w, 0.08 * w, angle=a, fc=color, ec="none",
+                             zorder=z + 0.04))
+
+
+def dishes(ax, x, y):
+    """Three cell lines, one dish each (back two, front one), centred near (x, y)."""
+    for k, (dx, dy) in enumerate(((-0.08, 0.075), (0.08, 0.075), (0.0, -0.035))):
+        dish(ax, x + dx, y + dy, 0.21, LINE_C[k], z=3 + k * 0.1)
 
 
 def network(ax, x, y, w, h, color):
@@ -238,12 +253,11 @@ def syringe_plate(ax, x, y, color=INK2):
     """A multiwell plate (lower-left corner at (x, y)) with a syringe dispensing into one well."""
     pw, ph = 0.30, 0.12
     box(ax, x, y, pw, ph, PANEL, color, r=0.015, lw=0.6, z=5)
-    for i in range(4):
+    for i in range(4):                       # wells hold the cell lines (same colours as the dishes)
         for j in range(2):
-            ax.add_patch(Circle((x + 0.045 + i * 0.07, y + 0.035 + j * 0.05), 0.017, fc="white", ec=color, lw=0.4,
-                                zorder=6))
+            ax.add_patch(Circle((x + 0.045 + i * 0.07, y + 0.035 + j * 0.05), 0.017, fc=tint(LINE_C[i % 3], 0.6),
+                                ec=color, lw=0.4, zorder=6))
     wx, wy = x + 0.045 + 2 * 0.07, y + 0.085
-    ax.add_patch(Circle((wx, wy), 0.017, fc=tint(MOD["meas"], 0.4), ec=color, lw=0.4, zorder=6))
     by = wy + 0.05
     ax.plot([wx, wx], [wy + 0.012, by], color=color, lw=0.6, zorder=7)
     ax.add_patch(Rectangle((wx - 0.022, by), 0.044, 0.10, fc="white", ec=color, lw=0.6, zorder=7))
@@ -411,22 +425,25 @@ def matrix_mix(ax, x, y, s, S, z=4):
     ax.add_patch(Rectangle((x, y), s, s, fc="none", ec=INK2, lw=0.5, zorder=z + 1))
 
 
-WCOL = 0.86                                  # width of the view-weight column in the fusion module
+WCOL = 0.62                                  # width of the view-weight column in the fusion module
+FWID = 0.12 + WCOL + 0.20 + FS + 0.15        # fusion module width
+FHGT = HB + 0.08 + FS + 0.18                 # fusion module height (only what it holds)
 
 
-def part_fusion(ax, xl, top, bot, my, S):
-    """Fusion + normalization from xl to the right edge. Left: the view weights w_v (real values, mean of five folds),
-    one bar per view with its icon and value, no title; an arrow; right: the normalised multi-view kernel (unit
-    diagonal). Returns the kernel's bottom-centre (the query row) and the module's left edge at its mid-height."""
-    module(ax, xl, bot, W - 0.03 - xl, top - bot, "Fusion + normalization", "eff")
-    ym = my + FS / 2; wx = xl + 0.12
+def part_fusion(ax, xl, top, S):
+    """Fusion + normalization, compact, from xl: left the view weights w_v (KTA, mean of five folds) as bars with the
+    view icons, no values; right the normalised multi-view kernel (unit diagonal). Bar length is drawn from an offset
+    (w - 0.20) so the small differences between views are visible; the bars are a schematic, not to scale. Returns the
+    kernel's bottom-centre (the query row) and the module's left edge at its mid-height."""
+    bot = top - FHGT
+    module(ax, xl, bot, FWID, FHGT, "Fusion + normalization", "eff")
+    my = bot + 0.18; ym = my + FS / 2; wx = xl + 0.12
     for r, (key, _) in enumerate(VIEWS):
-        yy = ym + (1.5 - r) * 0.17; w_ = S["weights"][key]; bl = w_ / 0.30 * 0.42
+        yy = ym + (1.5 - r) * 0.17; w_ = S["weights"][key]; bl = 0.06 + (w_ - 0.20) / 0.10 * 0.40
         ICON[key](ax, wx + 0.04, yy, 0.085)
         ax.add_patch(Rectangle((wx + 0.13, yy - 0.035), bl, 0.07, fc=VIEW[key], ec="none", zorder=4))
-        label(ax, wx + 0.16 + bl, yy, f"{w_:.2f}", size=5.2, color=INK2, ha="left")
     nx = xl + 0.12 + WCOL + 0.20
-    arrow(ax, xl + 0.12 + WCOL - 0.04, ym, nx - 0.10, ym, color=OURS)    # stops before the row labels
+    arrow(ax, xl + 0.12 + WCOL - 0.02, ym, nx - 0.10, ym, color=OURS)    # stops before the row labels
     matrix(ax, nx, my, FS, S["kernels"]["norm"], OURS, hl_last=True)
     axis_labels(ax, nx, my, FS, size=6.0, cols="bottom")
     return (nx + FS / 2, my), (xl, ym)
@@ -512,10 +529,10 @@ def part_context(ax, x, yT, yD, yB, vals):
     """Cells -> DMSO / treated; backbone; residual. Rows at heights yT (treated), yD (DMSO), yB (backbone)."""
     A = {}
     wx = x + 0.22
-    well(ax, wx, yD, 0.15)
-    label(ax, wx, yD - 0.27, "cell line\n× plate", size=5.2, color=MUTED, linespacing=0.95)
+    dishes(ax, wx, yD)
+    label(ax, wx, yD - 0.22, "cell lines", size=5.4, color=INK2)
     dx = x + 0.50
-    arrow(ax, wx + 0.16, yD, dx, yD, color=FLOW)
+    arrow(ax, wx + 0.20, yD, dx, yD, color=FLOW)
     strip(ax, dx, yD - SH / 2, SW, SH, vals["ctl"], CTX)
     label(ax, dx + SW / 2, yD + 0.12, "DMSO control", size=5.8)
     A["dmso"] = (dx + SW, yD)
@@ -588,11 +605,12 @@ def toy_vals(G=8):
 
 
 # ---------------------------------------------------------------- assembly
-W, H = 6.5, 4.60
+H = 4.60
 GUT = 0.08                                   # gutter between modules
 KMX, KMW = 0.03 + CW + 0.12 + GUT, 1.66      # similarity-kernels module
 XL = KMX + KMW + GUT                         # left edge of the fusion module
 XF = XL + 0.12 + WCOL + 0.20 + FS / 2        # normalised kernel's centre = similarity column of the regression
+W = XL + FWID + 0.03                         # canvas width: the right edge follows the fusion module
 
 
 def assemble(S, vals):
@@ -610,7 +628,7 @@ def assemble(S, vals):
     (kfx, kfy), kright = part_kernels(ax, kx, ky, S)
     path(ax, [(cx0 + cw, kfy), (kmx, kfy)], color=FLOW)                    # compound information -> kernels
     # fusion
-    (qx, qy), (fl, fm) = part_fusion(ax, XL, top, kmb, (kmb + top - HB) / 2 - FS / 2 + 0.03, S)
+    (qx, qy), (fl, fm) = part_fusion(ax, XL, top, S)
     path(ax, [(kmx + kmw, fm), (fl, fm)], color=FLOW)                      # kernels -> fusion, at matrix height
     # context lane and measured responses
     yT = cbot - 0.05 - GUT - 0.39; yD, yB = 0.98, 0.40     # measured module sits one gutter below the cards

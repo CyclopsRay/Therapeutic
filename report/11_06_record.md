@@ -1565,3 +1565,9 @@ per fold, as for PCC_plate. Coverage reported: plates and units kept, and the sh
   colour, value; no title) and an arrow into the normalised kernel on its right; the similarity column of Kernel
   regression moved with the kernel (XF = XL + 0.12 + 0.86 + 0.20 + KS/2); regression output strips shortened so its +
   node clears the module edge.
+- Fig. 1 (user, three points): (1) Fusion module only as tall as its content; weight bars without values, length from
+  an offset (0.06 + (w − 0.20)/0.10 × 0.40 in) so the small differences are visible — schematic, not to scale (code
+  comment). (2) Canvas narrowed from 6.50 to 6.23 in: the right edge follows the fusion module (W = XL + FWID + 0.03);
+  scaled to the text width the figure is ~4% larger. (3) "cell line × plate" well replaced by three petri dishes, one
+  per cell line (muted slate / mauve / sage), labelled "cell lines"; the plate wells use the same three colours.
+  Build: References still at line 46/50 of p. 11.
