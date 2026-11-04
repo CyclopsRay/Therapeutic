@@ -1673,3 +1673,6 @@ per fold, as for PCC_plate. Coverage reported: plates and units kept, and the sh
   fields; plain-text abstract checked word for word against `abstract.txt` = registered abstract).
 - RECOMB rule (paper/README.md): preprints allowed; accepted papers must be on bioRxiv/arXiv by the final-version
   date. Posting needs all four authors' consent and a license choice; not posted.
+- 20:10, licenses (user): code MIT (UnDetect c7e8359, copyright the four authors; README "License" section notes that
+  datasets keep their own terms); bioRxiv CC BY 4.0 (paper 65512c8, `biorxiv/SUBMISSION.md`). Author e-mails
+  firstname.surname@mbzuai.ac.ae on the title page of both versions (paper 5f5e92c).
