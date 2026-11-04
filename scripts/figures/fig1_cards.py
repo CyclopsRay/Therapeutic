@@ -643,7 +643,8 @@ def toy_vals(G=8):
 # ---------------------------------------------------------------- assembly
 H = 4.24                                     # 2026-11-04: bottom lane and its gap to the measured module tightened
 GUT = 0.08                                   # gutter between modules
-KMX, KMW = 0.03 + CW + 0.12 + GUT, 1.66      # similarity-kernels module
+DCK = 0.20                                   # extra gap: compound information -> kernels arrow between frames
+KMX, KMW = 0.03 + CW + 0.12 + GUT + DCK, 1.66      # similarity-kernels module
 XL = KMX + KMW + GUT                         # left edge of the fusion module
 XF = XL + 0.12 + WCOL + 0.20 + FS / 2        # normalised kernel's centre = similarity column of the regression
 W = XL + FWID + 0.03                         # canvas width: the right edge follows the fusion module
@@ -662,7 +663,7 @@ def assemble(S, vals):
     module(ax, kmx, kmb, kmw, top - kmb, "Similarity kernels", "info")
     kx, ky = kmx + 0.17, kmb + 0.20
     (kfx, kfy), kright = part_kernels(ax, kx, ky, S)
-    path(ax, [(cx0 + cw - 0.05, kfy), (kmx + 0.05, kfy)], color=FLOW, lw=1.2, ms=9, z=6)   # cards -> kernels
+    path(ax, [(cx0 + cw, kfy), (kmx, kfy)], color=FLOW, lw=1.2, ms=9, z=6)    # module edge to module edge
     # fusion
     (qx, qy), merge, tip = part_fusion(ax, XL, top, kmb, S)       # same top and bottom as the kernels module
     part_flow(ax, kx, ky, merge, tip, S)                             # view ribbons -> arrow -> fused kernel
