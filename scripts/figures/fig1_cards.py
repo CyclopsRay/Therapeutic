@@ -436,7 +436,7 @@ def matrix_mix(ax, x, y, s, S, z=4):
 WCOL = 0.62                                  # kept for the module width and XF
 FWID = 0.12 + WCOL + 0.20 + FS + 0.15        # fusion module width
 FS2 = 1.05                                   # normalised kernel in the fusion module (larger than a view kernel)
-RIB = 0.20                                   # total ribbon width at the merge = arrow shaft height
+RIB, SHAFT = 0.28, 0.13                      # total ribbon width at the cards; arrow shaft height
 
 
 def part_fusion(ax, xl, top, bot, S):
@@ -450,33 +450,38 @@ def part_fusion(ax, xl, top, bot, S):
     my = lo + (hi - lo - FS2) / 2; ym = my + FS2 / 2
     matrix(ax, nx, my, FS2, S["kernels"]["norm"], OURS, hl_last=True)
     axis_labels(ax, nx, my, FS2, size=6.0, cols="bottom")
-    return (XF, my - 0.17), (xl - 0.10, ym), nx - 0.17
+    return (XF, my - 0.17), (nx - 0.17 - 0.36, ym), nx - 0.17
 
 
 def part_flow(ax, kx, ky, merge, tip, S):
-    """One ribbon per view from its kernel card's right edge to a merge point, then one arrow into the fused kernel.
-    Ribbon width is proportional to the view weight w_v (KTA, mean of five folds), so the four widths are to scale and
-    sum to RIB; each ribbon fades in from its card. Order at the merge, top to bottom: Cell Painting, mechanism,
-    targets, structure (as the cards are stacked)."""
+    """View ribbons into one arrow (after Keqin Peng's drawing, 2026-11-04). Each ribbon leaves its kernel card's
+    right edge at mid-height, fades in, curves towards the arrow and narrows into its share of the shaft, its colour
+    blending into the arrow's blue over the last stretch. Ribbon width encodes the view weight w_v (KTA, mean of five
+    folds) as the old weight bars did: drawn from an offset, width proportional to w_v - 0.18, so the order and the
+    relative differences are visible (the weights are 0.22-0.31); schematic, not to scale. Order in the shaft, top to
+    bottom: Cell Painting, mechanism, targets, structure (as the cards are stacked)."""
     xm, ym = merge
-    w = np.array([S["weights"][k] for k, _ in VIEWS], float); w = w / w.sum() * RIB
-    ytop = ym + RIB / 2; t = np.linspace(0, 1, 61)
+    w = np.clip(np.array([S["weights"][k] for k, _ in VIEWS], float) - 0.18, 0.02, None); w = w / w.sum()
+    blue = np.array(mcolors.to_rgb(OURS)); t = np.linspace(0, 1, 81)
     for k in (3, 2, 1, 0):
-        key = VIEWS[k][0]
-        x0, y0 = kx + k * KD + KS, ky + k * KD + 0.42 * KS
-        yc = ytop - w[3:k:-1].sum() - w[k] / 2 if k < 3 else ytop - w[3] / 2
-        P = np.array([(x0, y0), (x0 + 0.45 * (xm - x0), y0), (xm - 0.45 * (xm - x0), yc), (xm, yc)])
+        key = VIEWS[k][0]; col = np.array(mcolors.to_rgb(VIEW[key]))
+        x0, y0 = kx + k * KD + KS, ky + k * KD + (KS + TAB) / 2
+        y1 = ym + SHAFT / 2 - SHAFT * (w[3:k:-1].sum() if k < 3 else 0) - SHAFT * w[k] / 2
+        P = np.array([(x0, y0), (x0 + 0.5 * (xm - x0), y0), (xm - 0.5 * (xm - x0), y1), (xm + 0.02, y1)])
         B = ((1 - t) ** 3)[:, None] * P[0] + (3 * (1 - t) ** 2 * t)[:, None] * P[1] + \
             (3 * (1 - t) * t ** 2)[:, None] * P[2] + (t ** 3)[:, None] * P[3]
-        h = w[k] / 2
-        for i in range(0, len(t) - 1, 2):                                   # fade in: alpha grows along the ribbon
-            seg = B[i:i + 3]
-            poly = np.vstack([seg + [0, h], (seg - [0, h])[::-1]])
-            ax.add_patch(Polygon(poly, closed=True, fc=VIEW[key], ec="none", alpha=0.12 + 0.78 * t[i],
-                                 zorder=6))
-    hl, hh = 0.16, 0.85 * RIB                                                # arrow: shaft = RIB, larger head
-    ax.add_patch(Polygon([(xm, ym + RIB / 2), (tip - hl, ym + RIB / 2), (tip - hl, ym + hh), (tip, ym),
-                          (tip - hl, ym - hh), (tip - hl, ym - RIB / 2), (xm, ym - RIB / 2)], closed=True,
+        h = (RIB * w[k] * (1 - t) + SHAFT * w[k] * t) / 2                    # narrows into its share of the shaft
+        outline = np.vstack([B + np.c_[0 * h, h], (B - np.c_[0 * h, h])[::-1]])
+        clip = Polygon(outline, closed=True, fc="none", ec="none"); ax.add_patch(clip)
+        u = np.linspace(0, 1, 256)                                          # one gradient fill along the ribbon (in x)
+        m = np.clip((u - 0.55) / 0.45, 0, 1)[:, None]                       # colour -> arrow blue near the end
+        rgba = np.c_[(1 - m) * col + m * blue, np.minimum(1.0, 0.15 + 1.6 * u)]
+        im = ax.imshow(rgba[None, :, :], extent=(x0, xm + 0.02, outline[:, 1].min(), outline[:, 1].max()),
+                       origin="lower", aspect="auto", interpolation="bilinear", zorder=6)
+        im.set_clip_path(clip)
+    hl, hh = 0.17, 0.11                                                        # thin shaft, larger head
+    ax.add_patch(Polygon([(xm, ym + SHAFT / 2), (tip - hl, ym + SHAFT / 2), (tip - hl, ym + hh), (tip, ym),
+                          (tip - hl, ym - hh), (tip - hl, ym - SHAFT / 2), (xm, ym - SHAFT / 2)], closed=True,
                          fc=OURS, ec="none", zorder=6.1))
 
 

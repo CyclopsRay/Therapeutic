@@ -1738,3 +1738,4 @@ one blue arrow (here: ribbon width = KTA view weight, replacing the weight bars,
 drawn as centred strokes; measured module wider (+0.04 in); residual branch further left (tx − 0.35) with a softer
 corner. Not taken: removal of the hatching on missing views (the caption and the method rely on it). Caption: "(ribbon
 widths)" added. Build unchanged: References p. 11 line 41/45; bioRxiv PDF rebuilt.
+- 00:20, fusion arrow matched to Keqin's drawing (user): ribbons leave each card at mid-height, narrow into the shaft and fade from transparent into the arrow blue (one gradient-filled shape each, no seams); widths now offset-scaled like the old bars (w - 0.18) so the weight differences show (structure widest); thin shaft, larger head. Build unchanged (References p. 11 line 41/45).
