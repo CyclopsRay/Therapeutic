@@ -7,7 +7,7 @@ prediction (interaction, response; UnDetect's colour in Fig. 2). View colours (r
 mechanism, green Cell Painting) only mark the view, each with an icon: fingerprint, protein with a binding pocket,
 pathway with an inhibition bar, a stained cell. Compounds carry their letter (D, V, M) used in the kernels. Kernel
 layers are tabbed cards, each tab with the view's icon and name. Compound effect, control PCs, interaction and response
-are separate boxes. Line corners are rounded.
+are separate boxes; all but the response sit in a Prediction module on the Context module's row (2026-11-04). Line corners are rounded.
 Shading only, no numbers: kernel shades are the real values (fig1_cards_data.py); expression strips are a toy seed.
 v6 (2026-11-02): compound cards; v7 keeps its data and order (D, V, ..., M; query last).
 Run: python -I scripts/figures/fig1_cards.py [SOURCE_DIR [OUTDIR]]   (numpy + matplotlib; SOURCE_DIR and OUTDIR
@@ -508,13 +508,13 @@ def small_box(ax, xc, yc, title, key, vals=None, rgb=None, h=0.27, w=BW):
 
 
 def part_output(ax, A, xu, xi, y_x, y_p, xr):
-    """Compound effect under the regression's sum (at the interaction's height) -> left into the interaction -> down
-    to + context -> right to the response. Returns the inputs of the interaction (control PCs, from the left) and of
-    the sum (context, from the left)."""
-    ut, ub = small_box(ax, xu, y_x, "Compound effect", "eff", None)
+    """Regression's sum -> down, then left into the compound effect -> left into the interaction -> down to + context
+    -> right, out of the prediction module, to the response. Returns the inputs of the interaction (control PCs, from
+    the left) and of the sum (context, from the left)."""
+    small_box(ax, xu, y_x, "Compound effect", "eff", None)
     strip(ax, xu - SW / 2, y_x - 0.105, SW, SH, VALS["u"], OURS, z=4.5)
-    arrow(ax, A["sum"][0], A["sum"][1], A["sum"][0], ut, color=OURS)
-    xt, xb = small_box(ax, xi, y_x + 0.065, "Interaction", "pred", h=0.33)
+    path(ax, [A["sum"], (A["sum"][0], y_x), (xu + BW / 2, y_x)], color=OURS)
+    xt, xb = small_box(ax, xi, y_x + 0.03, "Interaction", "pred", h=0.31)   # top clear of the module's title band
     node(ax, xi, y_x, "×", color=MOD["pred"], fc="white", r=0.052)
     arrow(ax, xu - BW / 2, y_x, xi + BW / 2, y_x, color=OURS)
     node(ax, xi, y_p, "+", color=INK2)
@@ -645,16 +645,22 @@ def assemble(S, vals):
     path(ax, [(rx, ry), (tx, T["in1"][1])], color=FLOW)
     path(ax, [(br, ry), (br, T["in0"][1]), (tx, T["in0"][1])], color=FLOW)
     dot(ax, br, ry, INK2)
-    # output: compound effect right of the regression; interaction centred below it
+    # output: control PCs, interaction and compound effect in one row inside the prediction module; the response
+    # sits right of the module, under the regression's sum
     VALS.update(vals)
-    pcx, xi, xr = 2.78, 3.82, 4.82
-    C = part_output(ax, T, W - 0.03 - BW / 2, xi, yD, yB, xr)
+    px = A["ctx_branch"] + 0.10               # module's left edge: right of the context -> residual line
+    pcx, xi, xu = 2.90, 3.86, 4.86
+    pr = xu + BW / 2 + 0.10                   # module's right edge
+    xr = W - 0.03 - BW / 2
+    C = part_output(ax, T, xu, xi, yD, yB, xr)
     # control PCs: their own box on the DMSO line, then straight into the interaction
     small_box(ax, pcx, yD, "Control PCs", "ctx", h=0.26)
     strip(ax, pcx - 0.17, yD - 0.10, 0.34, SH, vals["pcs"], CTX, z=4.5)
     path(ax, [A["dmso"], (pcx - 0.33, yD)], color=FLOW, z=2.6)
     path(ax, [(pcx + 0.33, yD), C["x"]], color=FLOW)
     path(ax, [A["ctx"], C["p"]], color=FLOW)
+    # prediction module: control PCs, interaction, compound effect and + context; same row as the context module
+    module(ax, px, 0.06, pr - px, yD + 0.40 - 0.06, "Prediction", "pred")
     return fig
 
 

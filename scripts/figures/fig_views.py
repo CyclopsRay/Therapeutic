@@ -7,8 +7,10 @@ dropped as the least informative panel).
     bars = s.d. over folds (permuted together: s.d. over five permutation seeds of the five-fold mean). Line = all four.
 (b) Chemically unlike pairs (Morgan Tanimoto < 0.25): response similarity by each view's similarity bin; dashed =
     chemical analogues (Tanimoto >= 0.6); number of pairs under each bar.
-(c) The three compounds of Fig. 1, each scored in the fold where it is held out: PCC_plate of the drug-free MLP, the
-    chemistry kernel, XPert and UnDetect (Fig. 2 colours).
+(c) The three named compounds with the largest gain of UnDetect over both XPert and the chemistry kernel (ranks 1-3 of
+    337 with >= 30 plate-mate rows; report §14.1, job 367867), each scored in the fold where it is held out: PCC_plate
+    of the drug-free MLP, the chemistry kernel, XPert and UnDetect (Fig. 2 colours). All three are in (d); mitoxantrone
+    is the Fig. 1 query (blue). v3 (2026-11-04): replaces the Fig. 1 compounds D, V, M.
 (d) Four chemically unlike pairs that respond alike (closest pairs in the fused kernel, one per well-known mechanism):
     structures, and the mean plate-centred signatures on the 30 genes with the largest |z| in either compound, ordered
     by the first: first compound measured, second measured, second as predicted by UnDetect while held out.
@@ -140,8 +142,8 @@ b.set_ylim(-0.02, 0.44); b.set_yticks([0, 0.1, 0.2, 0.3, 0.4])
 b.grid(axis="y", color=GRID, lw=0.6); b.set_axisbelow(True)
 panel(b, "b", -0.22)
 
-# (c) the Fig. 1 compounds, each scored where it is held out
-comp = [("daunorubicin", "D"), ("vorinostat", "V"), ("mitoxantrone", "M")]
+# (c) the largest gains over both XPert and the chemistry kernel (report §14.1), each scored where it is held out
+comp = [("R-547", "R-547"), ("alvocidib", "alvocidib"), ("mitoxantrone", "mitoxantrone")]
 wbar = 0.19
 for i, (nm, lt) in enumerate(comp):
     sc = SC[(SC.name == nm) & (SC.pert_id == PID[nm])].set_index("arm").pcc_plate
@@ -149,11 +151,11 @@ for i, (nm, lt) in enumerate(comp):
         c.bar(i + (j - 1.5) * wbar, sc[arm], width=wbar * 0.92, color=col, zorder=2)
         rows.append({"panel": "c", "compound": nm, "arm": arm, "pcc_plate": float(sc[arm])})
 c.axhline(0, color=INK2, lw=0.6, zorder=3)
-c.set_xticks(range(3), [lt for nm, lt in comp], fontsize=8)
+c.set_xticks(range(3), [lt for nm, lt in comp], fontsize=6.3, rotation=25, ha="right", rotation_mode="anchor")
 c.get_xticklabels()[2].set_color("#2a78d6")
 c.tick_params(axis="x", length=0, pad=2)
 c.set_ylabel(r"PCC$_\mathrm{plate}$", fontsize=8, labelpad=1)
-c.set_ylim(-0.25, 1.12); c.set_yticks([-0.2, 0, 0.2, 0.4, 0.6, 0.8])
+c.set_ylim(-0.32, 1.02); c.set_yticks([-0.2, 0, 0.2, 0.4, 0.6])
 c.grid(axis="y", color=GRID, lw=0.6); c.set_axisbelow(True)
 for arm, lab, col in MODEL:
     c.bar([0], [0], color=col, label=lab)

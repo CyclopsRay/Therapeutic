@@ -1589,3 +1589,39 @@ per fold, as for PCC_plate. Coverage reported: plates and units kept, and the sh
 - 2026-11-04: an alternative introduction appeared on Overleaf (`paper/sections/01_introduction_JW.tex`, commits
   f39a704 / dca25e3; not input by main.tex). User decision: keep our current introduction (`01_introduction.tex`);
   do not use the alternative, and do not delete it.
+
+### 2026-11-04 16:30 — Compared-model descriptions, Discussion merged, Fig. 1 Prediction module (local, not committed)
+
+- **Fig. 1:** the four unframed boxes (control PCs, compound effect, interaction, response) now sit in a light-red
+  **Prediction** module on the same row as Context (user proposed "Integration"; chose "Prediction" because the frame
+  colour key and caption already use that word and "integration" appears nowhere in the text). Left edge placed right of
+  the context → residual line so no line crosses a frame; control PCs / interaction shifted right (pcx 2.90, xi 3.86).
+  Generator `scripts/figures/fig1_cards.py`; rendered with FIG_FONT Arial, font gate passed.
+- **Fig. 1 caption** cut from 11 to 7 lines: one clause per module, in the figure's module names.
+- **§3.2 Compared methods (Jun Wen):** two-sentence architecture + strength for the three strongest published models
+  by PCC_DEG: DeepCE (GCN + substructure–gene attention), TranSiGen (VAEs on control/treated + pretrained molecular
+  embedding), XPert (control gene tokens attending to a pretrained 3-D molecular encoder + graph-pretrained compound
+  embedding over PPI, drug–target, drug–drug edges). Checked against the benchmark code (`repro/dpb/upstream/models`).
+  Uni-Mol and KPGT are not named (no bib entries). Method "Related designs" now points to §3.2 instead of repeating.
+- **Discussion:** six paragraphs → three (what the results mean; which compound information generalizes, incl. the
+  network-null point; evaluation advice and unseen lines). Dropped repeats of Results numbers (0.20/0.10, 0.602/0.544,
+  5 vs 268 min), the cross-line-sharing paragraph (in Results) and "XPert is stronger with structure alone" (still in
+  App. fig. app-transfer b).
+- **§3.5 case study:** one clause for Fig. 3c's D and V (XPert 0.782 / 0.676, UnDetect 0.686 / 0.623; report §14),
+  which the text did not mention.
+- **Layout:** Fig. 3 source moved to the start of §3.4 (its first citation); `\FloatBarrier` (placeins) before the
+  Discussion keeps Table 4 ahead of it. Build: main text pp. 2–11, References at line 42/46 of p. 11, no overfull
+  boxes, no undefined references.
+- Open (user's question): Fig. 2a/b and Table 2 share the "with drug" values of the published models; not changed.
+- 16:50, user's revision of the Prediction module: it now holds only control PCs, interaction, compound effect and the
+  + context; the response sits outside it, right of the module under the regression's sum. The compound-effect lane
+  turns down, then left into the compound effect (pcx 2.90, xi 3.86, xu 4.86; module right edge xu + BW/2 + 0.10).
+  Interaction box lowered and shortened (centre yD + 0.03, h 0.31) so its top clears the module's title band. Caption
+  unchanged (the "Prediction" clause still holds).
+- 17:10, **Fig. 3c redesigned (user agreed):** D and V dropped from (c). Reason: (c) should show where structure points
+  to the wrong neighbour; D and V are cases where structure is informative, and XPert is above UnDetect on both
+  (0.782 / 0.686, 0.676 / 0.623; §14), so the panel read as "XPert wins 2 of 3". Daunorubicin also has stereoisomer
+  pert_ids in training folds (§14). New (c): R-547, alvocidib, mitoxantrone = ranks 1–3 of the §14.1 scan by
+  min(UnDetect − XPert, UnDetect − chemistry), selection rule stated in the caption. Text: UnDetect > chemistry kernel
+  for 72% of 337 named compounds (§14.1); the D/V clause added at 16:30 removed. Not stated in the paper but on
+  record: UnDetect > XPert for 49% of the 337 (§14.1). Build unchanged: References at line 42/46 of p. 11.
