@@ -1680,3 +1680,13 @@ per fold, as for PCC_plate. Coverage reported: plates and units kept, and the sh
   overleaf-2026-11-04-1342 because main had moved on. c2c9e71 = 112d90a's text plus stale fig2_benchmark.{pdf,svg}
   (legend-on-top version). Merged with `-s ours` (paper 474a012): main's tree unchanged, Overleaf can fast-forward.
 - 20:50, Jun Wen marked corresponding author (\thanks footnote, both versions; SUBMISSION.md); preprint PDF rebuilt.
+
+### 2026-11-04 21:20 — Reviewer-style comments T1–T3 (user pasted); decisions
+
+- T1 (LOO formula "wrong"): the paper already had (g(d) − H_dd c_d)/(1 − H_dd), same as cache_undetect.py; the inline
+  slash form was misread. Now a displayed \frac equation (Method).
+- T2 (normalisation claim, zero-weight edge case): one sentence that normalisation removes zero-fill shrinkage while
+  predictability still depends on views (cites the coverage figure); structure is observed for all compounds with KTA
+  weight 0.28–0.31 in every fold (cache_v1 summary.json), so Δ is invertible; code clamps the diagonal at 1e-12.
+- T3: constant-prediction score stated as a convention (main text + App. A.11). Clustered bootstrap run (report §16,
+  job 369274): plate-clustered intervals keep every PCC_within claim 5/5; two-way: UnDetect − XPert 4/5.

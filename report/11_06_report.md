@@ -961,3 +961,31 @@ weighted by the product of its compounds' draw counts), seed 0. Source:
 
 - The Cell Painting ≥ 0.7 bin rests on 99 pairs of 141 compounds; its interval [0.19, 0.38] lies above the analogues'
   [0.14, 0.20], so "Cell-Painting-similar unlike pairs respond more alike than chemical analogues" holds with intervals.
+
+## 16. Clustered bootstrap intervals for PCC_within (job 369274; no training; 2026-11-04)
+
+Script `scripts/within_plate_cluster_ci.py` (`slurm/within_plate_cluster_ci.sbatch`, cn-10, numpy 1.26.4, seed 0,
+B = 2,000 per fold) on the 67,680 (plate, compound) units of §12 (`within_plate/units.csv.gz`; per fold 13,166–13,918
+units, 1,525–1,575 plates, 1,617–1,626 compounds). Schemes: resample compounds (as §12), resample plates, and two-way
+(plates and compounds resampled independently, unit weight = product of counts). Output
+`/nfs-stor/yuqi.lei/Therapeutic/results/sdst_hybrid/within_plate/cluster_ci.csv`; log
+`/nfs-stor/yuqi.lei/Therapeutic/logs/within-cluster-369274.out`. Folds = number of folds whose 95% interval is above 0.
+
+| quantity | mean | compound | plate | two-way | lowest bound (two-way) |
+|---|---|---|---|---|---|
+| UnDetect (ctx_pc) | 0.1168 | 5/5 | 5/5 | 5/5 | 0.0977 |
+| ctx_pc − pool_kta (interaction) | +0.0062 | 5/5 | 5/5 | 5/5 | 0.0047 |
+| ctx_pc − XPert | +0.0247 | 5/5 | 5/5 | **4/5** | −0.0004 |
+| UnDetect + XPert | 0.1260 | 5/5 | 5/5 | 5/5 | 0.1040 |
+| ensemble − ctx_pc | +0.0093 | 4/5 | 5/5 | 4/5 | −0.0035 |
+| ensemble − XPert | +0.0340 | 5/5 | 5/5 | 5/5 | 0.0190 |
+| pool_kta (multi-view kernel) | 0.1106 | 5/5 | 5/5 | 5/5 | 0.0913 |
+| pool_chem (chemistry kernel) | 0.0800 | 5/5 | 5/5 | 5/5 | 0.0660 |
+| pool_plate (plate kernel) | 0.0003 | 1/5 | 1/5 | 0/5 | −0.0018 |
+| XPert | 0.0921 | 5/5 | 5/5 | 5/5 | 0.0670 |
+| TranSiGen | 0.0789 | 5/5 | 5/5 | 5/5 | 0.0602 |
+| DeepCE | 0.0272 | 5/5 | 5/5 | 5/5 | 0.0133 |
+
+- Plate-clustered intervals are narrower than or equal to the compound intervals for every quantity here.
+- Negative: under two-way clustering the lead of UnDetect over XPert on PCC_within has its interval above zero in 4 of
+  5 folds (one fold's lower bound −0.0004); ensemble − ctx_pc is above zero in 4/5 under compound and two-way.
