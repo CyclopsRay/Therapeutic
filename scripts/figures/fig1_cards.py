@@ -89,7 +89,7 @@ def module(ax, x, y, w, h, title, key, dashed=False, z=0.5, size=5.5, tx=0.07):
         size -= 0.2; t.set_fontsize(size)
 
 
-def path(ax, pts, color=FLOW, lw=0.6, r=0.07, head=True, z=2):
+def path(ax, pts, color=FLOW, lw=0.6, r=0.07, head=True, z=2, ms=6):
     """Polyline with rounded corners (quadratic arcs of radius r) and an arrow head at its end."""
     P = [np.asarray(p, float) for p in pts]
     verts, codes = [P[0]], [MPath.MOVETO]
@@ -99,7 +99,7 @@ def path(ax, pts, color=FLOW, lw=0.6, r=0.07, head=True, z=2):
         rr = min(r, l1 / 2, l2 / 2)
         verts += [b - d1 / l1 * rr, b, b + d2 / l2 * rr]; codes += [MPath.LINETO, MPath.CURVE3, MPath.CURVE3]
     verts.append(P[-1]); codes.append(MPath.LINETO)
-    ax.add_patch(FancyArrowPatch(path=MPath(verts, codes), arrowstyle="-|>" if head else "-", mutation_scale=6,
+    ax.add_patch(FancyArrowPatch(path=MPath(verts, codes), arrowstyle="-|>" if head else "-", mutation_scale=ms,
                                  lw=lw, color=color, zorder=z, joinstyle="round", capstyle="round"))
 
 
@@ -662,7 +662,7 @@ def assemble(S, vals):
     module(ax, kmx, kmb, kmw, top - kmb, "Similarity kernels", "info")
     kx, ky = kmx + 0.17, kmb + 0.20
     (kfx, kfy), kright = part_kernels(ax, kx, ky, S)
-    path(ax, [(cx0 + cw, kfy), (kmx, kfy)], color=FLOW)                    # compound information -> kernels
+    path(ax, [(cx0 + cw - 0.05, kfy), (kmx + 0.05, kfy)], color=FLOW, lw=1.2, ms=9, z=6)   # cards -> kernels
     # fusion
     (qx, qy), merge, tip = part_fusion(ax, XL, top, kmb, S)       # same top and bottom as the kernels module
     part_flow(ax, kx, ky, merge, tip, S)                             # view ribbons -> arrow -> fused kernel
