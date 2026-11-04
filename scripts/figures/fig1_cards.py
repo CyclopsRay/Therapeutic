@@ -605,7 +605,7 @@ def toy_vals(G=8):
 
 
 # ---------------------------------------------------------------- assembly
-H = 4.60
+H = 4.24                                     # 2026-11-04: bottom lane and its gap to the measured module tightened
 GUT = 0.08                                   # gutter between modules
 KMX, KMW = 0.03 + CW + 0.12 + GUT, 1.66      # similarity-kernels module
 XL = KMX + KMW + GUT                         # left edge of the fusion module
@@ -622,7 +622,7 @@ def assemble(S, vals):
     ends, cbot = part_cards(ax, cx0 + 0.06, top - 0.17, S)
     module(ax, cx0, cbot - 0.05, cw, top - cbot + 0.05, "Compound information", "info")
     kmx, kmw = KMX, KMW
-    kmb = 2.86
+    kmb = H - 1.74
     module(ax, kmx, kmb, kmw, top - kmb, "Similarity kernels", "info")
     kx, ky = kmx + 0.17, kmb + 0.20
     (kfx, kfy), kright = part_kernels(ax, kx, ky, S)
@@ -631,11 +631,11 @@ def assemble(S, vals):
     (qx, qy), (fl, fm) = part_fusion(ax, XL, kmb + FHGT, S)          # bottom-aligned with the kernels module
     path(ax, [(kmx + kmw, fm), (fl, fm)], color=FLOW)                      # kernels -> fusion, at matrix height
     # context lane and measured responses
-    yT = cbot - 0.05 - GUT - 0.39; yD, yB = 0.98, 0.40     # measured module sits one gutter below the cards
+    yT = cbot - 0.05 - GUT - 0.39; yB = 0.34; yD = yB + 0.40   # measured module sits one gutter below the cards
     A = part_context(ax, 0.10, yT, yD, yB, vals)
     module(ax, 0.03, yT - 0.22, A["meas"][1] - 0.03, 0.61,
            "Measured responses for profiled compounds", "meas", dashed=True)
-    module(ax, 0.03, 0.06, A["ctx_box"][1] - 0.03, yD + 0.40 - 0.06, "Context", "ctx", tx=0.42)
+    module(ax, 0.03, yB - 0.31, A["ctx_box"][1] - 0.03, yD + 0.40 - (yB - 0.31), "Context", "ctx", tx=0.42)
     # kernel regression
     tx = 3.50
     T = part_transfer(ax, tx, yT + 0.25 + 0.47 + 0.13 + (SH + 0.03) / 2, XF, vals, S)
@@ -660,7 +660,7 @@ def assemble(S, vals):
     path(ax, [(pcx + 0.33, yD), C["x"]], color=FLOW)
     path(ax, [A["ctx"], C["p"]], color=FLOW)
     # prediction module: control PCs, interaction, compound effect and + context; same row as the context module
-    module(ax, px, 0.06, pr - px, yD + 0.40 - 0.06, "Prediction", "pred")
+    module(ax, px, yB - 0.31, pr - px, yD + 0.40 - (yB - 0.31), "Prediction", "pred")
     return fig
 
 

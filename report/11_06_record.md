@@ -1625,3 +1625,22 @@ per fold, as for PCC_plate. Coverage reported: plates and units kept, and the sh
   min(UnDetect − XPert, UnDetect − chemistry), selection rule stated in the caption. Text: UnDetect > chemistry kernel
   for 72% of 337 named compounds (§14.1); the D/V clause added at 16:30 removed. Not stated in the paper but on
   record: UnDetect > XPert for 49% of the 337 (§14.1). Build unchanged: References at line 42/46 of p. 11.
+
+### 2026-11-04 18:00 — Space and readability round; reference check (pushed)
+
+- **Fig. 1:** bottom lane tightened: canvas H 4.60 → 4.24 in; yD − yB 0.58 → 0.40; Context/Prediction frames end 0.31
+  below yB; gap Measured → Context/Prediction 0.22 → 0.10 (kernel-module bottom now H − 1.74).
+- **Fig. 2:** "with drug / drug input zeroed" legend moved from the top to under panels a and b, centred (LEGY 0.372).
+- **Intro contributions:** the four-item list replaced by three summary sentences (method; plate analysis and
+  plate-centred metrics; headline results). The network-null contribution is no longer listed (still in §3.4 and the
+  Discussion).
+- **Fig. 3 caption:** rewritten around one idea per panel, parentheses removed; error bars defined in one sentence.
+  Dropped detail: Tanimoto thresholds in (b), pair counts, the "37 genes" style specifics of (d).
+- **Reference check** (scratchpad `refcheck.py` → Crossref; chemCPA against the NeurIPS bibtex): all 35 cited keys
+  exist; 11 bib entries uncited (bibtex drops them). Title, first author, volume and pages match for all 35. Year
+  differences are online-first vs volume year (GEARS 2023/2024, STRING 2022/2023, Systema 2025/2026, PertDiT 2025/2026,
+  Hodos 2017/PSB 2018); the bib keeps the volume year. Cortes et al. (JMLR, no DOI) checked by hand.
+  Context errors fixed: GEARS was cited as a "protein-interaction prior" (its graph is GO-derived) → "gene-network
+  prior"; L1000 "tens of thousands of compounds" → "nearly 20,000" (19,811 small molecules in Subramanian 2017).
+- Build: 20 pages; main text pp. 2–11, References at line 23/53 of p. 11; no overfull boxes, no undefined references.
+  Remaining drafting macros: code URL (intro, Discussion) and Jun Wen's acknowledgements.

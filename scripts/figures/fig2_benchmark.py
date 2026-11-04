@@ -109,6 +109,7 @@ rows = []
 
 fig = plt.figure(figsize=(6.5, 4.9))
 TOP = 3.1 / 4.9  # panels a-b in the upper part; c below
+LEGY = 0.372     # legend shared by (a) and (b), centred under both (2026-11-04)
 def box(x, y, w, h):
     return [x, 1 - TOP + y * TOP, w, h * TOP]
 a = fig.add_axes(box(0.125, 0.14, 0.33, 0.76))
@@ -135,7 +136,7 @@ style_axis(a, r"PCC$_\mathrm{DEG}$", (0, 0.76))
 fig.legend(handles=[Patch(facecolor="#8a8984", edgecolor="#8a8984", label="with drug"),
                     Patch(facecolor=tint("#8a8984"), edgecolor="#8a8984", hatch="//////",
                           label="drug input zeroed")],
-           loc="upper left", bbox_to_anchor=(0.11, 1.0), ncol=2, frameon=False, fontsize=7.5, handlelength=1.4,
+           loc="center", bbox_to_anchor=(0.55, LEGY), ncol=2, frameon=False, fontsize=7.5, handlelength=1.4,
            handletextpad=0.4, columnspacing=1.2, borderaxespad=0.2)
 panel(a, "a", -0.33)
 
