@@ -1676,3 +1676,6 @@ per fold, as for PCC_plate. Coverage reported: plates and units kept, and the sh
 - 20:10, licenses (user): code MIT (UnDetect c7e8359, copyright the four authors; README "License" section notes that
   datasets keep their own terms); bioRxiv CC BY 4.0 (paper 65512c8, `biorxiv/SUBMISSION.md`). Author e-mails
   firstname.surname@mbzuai.ac.ae on the title page of both versions (paper 5f5e92c).
+- 20:30, Overleaf merge conflict: Overleaf (last synced at 1cc59c7) pushed c2c9e71 to branch
+  overleaf-2026-11-04-1342 because main had moved on. c2c9e71 = 112d90a's text plus stale fig2_benchmark.{pdf,svg}
+  (legend-on-top version). Merged with `-s ours` (paper 474a012): main's tree unchanged, Overleaf can fast-forward.
